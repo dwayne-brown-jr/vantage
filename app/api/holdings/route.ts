@@ -8,7 +8,14 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json({ holdings: await listHoldings() });
+  try {
+    return NextResponse.json({ holdings: await listHoldings() });
+  } catch (e) {
+    return NextResponse.json(
+      { error: "Failed to load holdings", name: e instanceof Error ? e.name : "Error", message: e instanceof Error ? e.message : String(e) },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {
