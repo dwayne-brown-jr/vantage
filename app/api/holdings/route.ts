@@ -7,8 +7,8 @@ import { holdingInputSchema } from "@/lib/schema";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export function GET() {
-  return NextResponse.json({ holdings: listHoldings() });
+export async function GET() {
+  return NextResponse.json({ holdings: await listHoldings() });
 }
 
 export async function POST(req: Request) {
@@ -17,6 +17,6 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid holding", details: parsed.error.flatten() }, { status: 400 });
   }
-  const holding = createHolding(parsed.data);
+  const holding = await createHolding(parsed.data);
   return NextResponse.json({ holding }, { status: 201 });
 }

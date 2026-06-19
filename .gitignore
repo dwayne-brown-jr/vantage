@@ -16,6 +16,9 @@
 *.tsbuildinfo
 next-env.d.ts
 
+# netlify CLI state / local function cache
+/.netlify/
+
 # ── secrets (API keys etc.) ──
 .env
 .env.*

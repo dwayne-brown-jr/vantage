@@ -16,6 +16,6 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid import", details: parsed.error.flatten() }, { status: 400 });
   }
-  const holdings = bulkInsertHoldings(parsed.data.holdings);
+  const holdings = await bulkInsertHoldings(parsed.data.holdings);
   return NextResponse.json({ holdings, count: holdings.length }, { status: 201 });
 }

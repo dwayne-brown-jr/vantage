@@ -15,14 +15,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid patch", details: parsed.error.flatten() }, { status: 400 });
   }
-  const holding = updateHolding(id, parsed.data);
+  const holding = await updateHolding(id, parsed.data);
   if (!holding) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ holding });
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
-  const ok = deleteHolding(id);
+  const ok = await deleteHolding(id);
   if (!ok) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

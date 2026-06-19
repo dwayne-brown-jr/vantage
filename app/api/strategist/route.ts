@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return jsonError("Invalid request body.", 400);
 
   // Build the portfolio context server-side from the canonical figures.
-  const context = buildStrategistContext(listHoldings());
+  const context = buildStrategistContext(await listHoldings());
   const system = `${STRATEGIST_SYSTEM}\n\n${context}`;
 
   const client = new Anthropic();

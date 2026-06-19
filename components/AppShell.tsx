@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { LogOut } from "lucide-react";
+
 import Holdings from "@/components/Holdings";
 import Overview from "@/components/Overview";
 import Plan from "@/components/Plan";
@@ -20,12 +22,26 @@ const TABS: [Tab, string][] = [
   ["strategist", "AI Strategist"],
 ];
 
-export default function AppShell({ initialHoldings }: { initialHoldings: Holding[] }) {
+export default function AppShell({
+  initialHoldings,
+  authEnabled = false,
+}: {
+  initialHoldings: Holding[];
+  authEnabled?: boolean;
+}) {
   const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
   const [tab, setTab] = useState<Tab>("holdings");
   const [error, setError] = useState<string | null>(null);
 
   const a = useMemo(() => analyze(holdings), [holdings]);
+
+  async function signOut() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.href = "/login";
+    }
+  }
 
   /** Local-only update for instant recompute while typing. */
   function onLive(id: string, patch: Partial<HoldingInput>) {
@@ -84,7 +100,27 @@ export default function AppShell({ initialHoldings }: { initialHoldings: Holding
           </span>
           <span className="tagline">Personal portfolio desk</span>
         </div>
-        <span className="asof mono">as of 6/15/26 · {fmtUSD(a.total)}</span>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+          <span className="asof mono">as of 6/15/26 · {fmtUSD(a.total)}</span>
+          {authEnabled && (
+            <button
+              onClick={() => void signOut()}
+              className="asof"
+              aria-label="Sign out"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--faint)",
+              }}
+            >
+              <LogOut size={12} /> Sign out
+            </button>
+          )}
+        </div>
       </header>
 
       <nav className="nav" aria-label="Sections">

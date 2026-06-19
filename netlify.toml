@@ -1,0 +1,9 @@
+# Netlify build settings. The Next.js runtime is auto-detected — no plugin entry
+# needed. Persistence uses Netlify Blobs in production (see lib/store), and the
+# app requires VANTAGE_PASSWORD + ANTHROPIC_API_KEY to be set as environment
+# variables on the site (Site settings → Environment variables).
+[build]
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "22"
