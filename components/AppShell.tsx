@@ -1,0 +1,119 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+import Holdings from "@/components/Holdings";
+import Overview from "@/components/Overview";
+import Plan from "@/components/Plan";
+import Strategist from "@/components/Strategist";
+import { createHolding, deleteHolding, updateHolding } from "@/lib/api";
+import { analyze } from "@/lib/analytics";
+import { fmtUSD } from "@/lib/format";
+import type { Holding, HoldingInput } from "@/lib/types";
+
+type Tab = "overview" | "holdings" | "plan" | "strategist";
+
+const TABS: [Tab, string][] = [
+  ["overview", "Overview"],
+  ["holdings", "Holdings"],
+  ["plan", "Plan"],
+  ["strategist", "AI Strategist"],
+];
+
+export default function AppShell({ initialHoldings }: { initialHoldings: Holding[] }) {
+  const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
+  const [tab, setTab] = useState<Tab>("holdings");
+  const [error, setError] = useState<string | null>(null);
+
+  const a = useMemo(() => analyze(holdings), [holdings]);
+
+  /** Local-only update for instant recompute while typing. */
+  function onLive(id: string, patch: Partial<HoldingInput>) {
+    setHoldings((hs) => hs.map((h) => (h.id === id ? { ...h, ...patch } : h)));
+  }
+
+  /** Persist a change; reconcile with the server's canonical row. */
+  async function onCommit(id: string, patch: Partial<HoldingInput>) {
+    onLive(id, patch);
+    try {
+      const saved = await updateHolding(id, patch);
+      setHoldings((hs) => hs.map((h) => (h.id === id ? saved : h)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save change.");
+    }
+  }
+
+  async function onAdd(account: string) {
+    setError(null);
+    try {
+      const created = await createHolding({
+        account,
+        symbol: "NEW",
+        name: "New position",
+        value: 0,
+        costBasis: 0,
+        assetClass: "us_stock",
+      });
+      setHoldings((hs) => [...hs, created]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add position.");
+    }
+  }
+
+  async function onDelete(id: string) {
+    const prev = holdings;
+    setHoldings((hs) => hs.filter((h) => h.id !== id)); // optimistic
+    try {
+      await deleteHolding(id);
+    } catch (e) {
+      setHoldings(prev); // revert on failure
+      setError(e instanceof Error ? e.message : "Failed to delete position.");
+    }
+  }
+
+  function onImported(created: Holding[]) {
+    setHoldings((hs) => [...hs, ...created]);
+  }
+
+  return (
+    <div className="vt wrap">
+      <header className="topbar">
+        <div className="brand">
+          <span className="mark">
+            Vant<b>a</b>ge
+          </span>
+          <span className="tagline">Personal portfolio desk</span>
+        </div>
+        <span className="asof mono">as of 6/15/26 · {fmtUSD(a.total)}</span>
+      </header>
+
+      <nav className="nav" aria-label="Sections">
+        {TABS.map(([t, label]) => (
+          <button key={t} className={tab === t ? "on" : ""} aria-current={tab === t} onClick={() => setTab(t)}>
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {error && (
+        <div className="card mb-[18px]" style={{ borderColor: "var(--red)" }} role="alert">
+          <span className="text-sm text-red">{error}</span>
+        </div>
+      )}
+
+      {tab === "overview" && <Overview a={a} />}
+      {tab === "holdings" && (
+        <Holdings
+          holdings={holdings}
+          onLive={onLive}
+          onCommit={onCommit}
+          onAdd={onAdd}
+          onDelete={onDelete}
+          onImported={onImported}
+        />
+      )}
+      {tab === "plan" && <Plan a={a} />}
+      {tab === "strategist" && <Strategist a={a} />}
+    </div>
+  );
+}

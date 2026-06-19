@@ -1,0 +1,10 @@
+"Positions for account Individual ...123 as of 04:15 PM ET, 2026/06/15"
+
+"Symbol","Description","Quantity","Price","Price Change %","Price Change $","Market Value","Day Change %","Day Change $","Cost Basis","Gain/Loss %","Gain/Loss $","Ratings","Reinvest Dividends?","Capital Gains?","% of Account","Security Type"
+"SWPPX","Schwab S&P 500 Index","115.218","$57.51","0.45%","$0.26","$6,626.64","0.4%","$26.40","$3,687.92","79.7%","$2,938.72","","Yes","Yes","83.3%","Mutual Fund"
+"NVDA","NVIDIA Corp","4.2","$151.39","1.2%","$1.79","$635.84","1.1%","$6.90","$556.34","14.3%","$79.50","","No","No","8.0%","Equity"
+"AAPL","Apple Inc","1.4","$211.67","0.7%","$1.46","$296.34","0.6%","$1.84","$129.47","128.9%","$166.87","","No","No","3.7%","Equity"
+"SWISX","Schwab International Index","4.6","$19.12","0.3%","$0.05","$87.95","0.2%","$0.20","$85.00","3.5%","$2.95","","Yes","Yes","1.1%","Mutual Fund"
+"SCHD","Schwab US Dividend Equity ETF","3.5","$27.98","0.1%","$0.03","$97.92","0.1%","$0.10","$69.64","40.6%","$28.28","","Yes","Yes","1.2%","ETF"
+"Cash & Money Market","--","--","--","--","--","$212.08","--","--","--","--","--","","--","--","2.7%","Cash"
+"Account Total","","","","","","$7,956.77","","","$4,528.37","","$3,244.32","","","","100%",""
