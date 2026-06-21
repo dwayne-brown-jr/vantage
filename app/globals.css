@@ -854,3 +854,122 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* ───────────────────────── toasts ───────────────────────── */
+.toasts {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(380px, calc(100vw - 32px));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 10px;
+  padding: 11px 12px;
+  font-size: 13px;
+  color: var(--txt);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: toastIn 0.18s ease-out;
+}
+.toast.ok {
+  border-left-color: var(--green);
+}
+.toast.ok svg {
+  color: var(--green);
+}
+.toast.error {
+  border-left-color: var(--red);
+}
+.toast.error svg {
+  color: var(--red);
+}
+.toast.info {
+  border-left-color: var(--gold-dim);
+}
+.toast-msg {
+  flex: 1;
+  min-width: 0;
+}
+.toast-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--gold);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.toast-x {
+  flex: 0 0 auto;
+  background: transparent;
+  border: none;
+  color: var(--faint);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 2px;
+}
+.toast-x:hover {
+  color: var(--txt);
+}
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* live-priced marker */
+.vt .live-dot {
+  color: var(--green);
+}
+
+/* ───────────────────────── holdings: mobile cards ───────────────────────── */
+.vt .hcards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vt .hcard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface2);
+  padding: 12px;
+}
+.vt .hcard-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.vt .hcard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vt .hcard-grid label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 3px;
+}
+.vt .hcard-grid .v-input {
+  width: 100%;
+  text-align: left;
+}

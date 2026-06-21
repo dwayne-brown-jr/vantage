@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { CalendarPlus } from "lucide-react";
 import { Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+import { useToast } from "@/components/Toast";
 import type { PortfolioAnalysis } from "@/lib/analytics";
 import { fetchSnapshots, saveSnapshot } from "@/lib/api";
 import { COMFORT_CEILING } from "@/lib/constants";
@@ -34,6 +35,7 @@ export default function History({ a }: { a: PortfolioAnalysis }) {
   const [snapshots, setSnapshots] = useState<Snapshot[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const toast = useToast();
 
   useEffect(() => {
     let on = true;
@@ -50,8 +52,10 @@ export default function History({ a }: { a: PortfolioAnalysis }) {
     setError(null);
     try {
       setSnapshots(await saveSnapshot());
+      toast({ message: "Snapshot saved", tone: "ok" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save snapshot.");
+      toast({ message: "Couldn't save snapshot", tone: "error" });
     } finally {
       setSaving(false);
     }

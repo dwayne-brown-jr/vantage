@@ -9,6 +9,7 @@ import Holdings from "@/components/Holdings";
 import Overview from "@/components/Overview";
 import Plan from "@/components/Plan";
 import Strategist from "@/components/Strategist";
+import { useToast } from "@/components/Toast";
 import { createHolding, deleteHolding, refreshPrices, updateHolding } from "@/lib/api";
 import { analyze } from "@/lib/analytics";
 import { fmtUSD } from "@/lib/format";
@@ -34,9 +35,18 @@ export default function AppShell({
   const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
   const [tab, setTab] = useState<Tab>("holdings");
   const [error, setError] = useState<string | null>(null);
-  const [pricesAsOf, setPricesAsOf] = useState<string | null>(null);
+  // Derive the initial "prices as of" from the last live-priced update so the
+  // topbar stays honest across reloads (not just within a session).
+  const initialPriceAsOf =
+    initialHoldings
+      .filter((h) => h.price != null && (h.quantity ?? 0) > 0 && h.updatedAt)
+      .map((h) => h.updatedAt as string)
+      .sort()
+      .at(-1) ?? null;
+  const [pricesAsOf, setPricesAsOf] = useState<string | null>(initialPriceAsOf);
   const [priceNote, setPriceNote] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const toast = useToast();
 
   const a = useMemo(() => analyze(holdings), [holdings]);
 
@@ -53,8 +63,15 @@ export default function AppShell({
       if (r.unresolved.length)
         parts.push(`${r.unresolved.length} manual (${r.unresolved.slice(0, 3).join(", ")}${r.unresolved.length > 3 ? "…" : ""})`);
       setPriceNote(parts.join(" · ") || "no live-priced holdings yet");
+      toast({
+        message: estimateShares
+          ? `Estimated shares and priced ${r.valueUpdated.length} holdings`
+          : `Prices updated — ${r.valueUpdated.length} live, ${r.unresolved.length} manual`,
+        tone: "ok",
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Price refresh failed.");
+      toast({ message: "Couldn't reach the price provider", tone: "error" });
     } finally {
       setRefreshing(false);
     }
@@ -101,19 +118,34 @@ export default function AppShell({
     }
   }
 
+  /** Restore a deleted holding (Undo), keeping its original id. */
+  async function restore(h: Holding) {
+    setHoldings((hs) => (hs.some((x) => x.id === h.id) ? hs : [...hs, h]));
+    try {
+      await createHolding(h);
+    } catch {
+      toast({ message: "Couldn't undo the delete", tone: "error" });
+    }
+  }
+
   async function onDelete(id: string) {
+    const victim = holdings.find((h) => h.id === id);
     const prev = holdings;
     setHoldings((hs) => hs.filter((h) => h.id !== id)); // optimistic
     try {
       await deleteHolding(id);
+      if (victim)
+        toast({ message: `Deleted ${victim.symbol}`, action: { label: "Undo", onClick: () => void restore(victim) } });
     } catch (e) {
       setHoldings(prev); // revert on failure
+      toast({ message: "Couldn't delete that position", tone: "error" });
       setError(e instanceof Error ? e.message : "Failed to delete position.");
     }
   }
 
   function onImported(created: Holding[]) {
     setHoldings((hs) => [...hs, ...created]);
+    toast({ message: `Imported ${created.length} position${created.length === 1 ? "" : "s"}`, tone: "ok" });
   }
 
   return (
@@ -129,7 +161,7 @@ export default function AppShell({
           <span className="asof mono">
             {pricesAsOf
               ? `prices ${new Date(pricesAsOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
-              : "as of 6/15/26"}{" "}
+              : "manual values"}{" "}
             · {fmtUSD(a.total)}
           </span>
           {authEnabled && (

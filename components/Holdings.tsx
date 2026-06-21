@@ -40,6 +40,7 @@ export default function Holdings({
   priceNote,
 }: HoldingsProps) {
   const [importing, setImporting] = useState(false);
+  const isMobile = useIsMobile();
   const accounts = [...new Set(holdings.map((h) => h.account))];
 
   return (
@@ -92,9 +93,16 @@ export default function Holdings({
             <div className="acctlbl">
               {account} · <span className="mono" style={{ color: "var(--muted)" }}>{fmtUSD(sub)}</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="v-table">
-                <thead>
+            {isMobile ? (
+              <div className="hcards">
+                {rows.map((h) => (
+                  <HoldingCard key={h.id} h={h} onLive={onLive} onCommit={onCommit} onDelete={onDelete} />
+                ))}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="v-table">
+                  <thead>
                   <tr>
                     <th>Symbol</th>
                     <th>Name</th>
@@ -159,11 +167,7 @@ export default function Holdings({
                           onLive={(n) => onLive(h.id, { value: n })}
                           onCommit={(n) => onCommit(h.id, { value: n })}
                         />
-                        {h.price != null && h.price > 0 && (
-                          <div className="mono" style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>
-                            @ {fmtPrice(h.price)}
-                          </div>
-                        )}
+                        <PriceHint h={h} />
                       </td>
                       <td className="r">
                         <NumberCell
@@ -182,13 +186,121 @@ export default function Holdings({
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            )}
             <button className="addbtn" onClick={() => onAdd(account)}>
               <Plus size={15} /> Add position
             </button>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Live (green) when value is derived from shares × price; faint when manual. */
+function PriceHint({ h }: { h: Holding }) {
+  if (h.price == null || h.price <= 0) return null;
+  const live = (h.quantity ?? 0) > 0;
+  return (
+    <div className="mono" style={{ fontSize: 10, marginTop: 2, color: live ? "var(--green)" : "var(--faint)" }}>
+      {live ? "● " : ""}@ {fmtPrice(h.price)}
+    </div>
+  );
+}
+
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 700px)");
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return mobile;
+}
+
+/** Stacked card view of a holding for narrow screens. */
+function HoldingCard({
+  h,
+  onLive,
+  onCommit,
+  onDelete,
+}: {
+  h: Holding;
+  onLive: HoldingsProps["onLive"];
+  onCommit: HoldingsProps["onCommit"];
+  onDelete: HoldingsProps["onDelete"];
+}) {
+  return (
+    <div className="hcard">
+      <div className="hcard-top">
+        <input
+          className="v-input mono"
+          style={{ width: 92, textAlign: "left", fontWeight: 700 }}
+          value={h.symbol}
+          aria-label="Symbol"
+          onChange={(e) => onLive(h.id, { symbol: e.target.value })}
+          onBlur={(e) => onCommit(h.id, { symbol: e.target.value.toUpperCase().trim() || "—" })}
+        />
+        <input
+          className="v-input"
+          style={{ flex: 1, minWidth: 0, textAlign: "left", fontFamily: "var(--font-sans)" }}
+          value={h.name}
+          aria-label="Name"
+          onChange={(e) => onLive(h.id, { name: e.target.value })}
+          onBlur={(e) => onCommit(h.id, { name: e.target.value })}
+        />
+        <button className="iconbtn" aria-label={`Delete ${h.symbol}`} onClick={() => onDelete(h.id)}>
+          <Trash2 size={15} />
+        </button>
+      </div>
+      <select
+        className="v-select"
+        style={{ width: "100%" }}
+        value={h.assetClass}
+        aria-label="Asset class"
+        onChange={(e) => onCommit(h.id, { assetClass: e.target.value as AssetClassKey })}
+      >
+        {ASSET_CLASS_KEYS.map((k) => (
+          <option key={k} value={k}>
+            {ASSET_CLASSES[k].label}
+          </option>
+        ))}
+      </select>
+      <div className="hcard-grid">
+        <div>
+          <label>Shares</label>
+          <NumberCell
+            value={h.quantity ?? 0}
+            ariaLabel="Shares"
+            blankZero
+            placeholder="—"
+            onLive={(n) => onLive(h.id, { quantity: n })}
+            onCommit={(n) => onCommit(h.id, { quantity: n })}
+          />
+        </div>
+        <div>
+          <label>Value</label>
+          <NumberCell
+            value={h.value}
+            ariaLabel="Value"
+            onLive={(n) => onLive(h.id, { value: n })}
+            onCommit={(n) => onCommit(h.id, { value: n })}
+          />
+          <PriceHint h={h} />
+        </div>
+        <div>
+          <label>Cost</label>
+          <NumberCell
+            value={h.costBasis}
+            ariaLabel="Cost basis"
+            onLive={(n) => onLive(h.id, { costBasis: n })}
+            onCommit={(n) => onCommit(h.id, { costBasis: n })}
+          />
+        </div>
+      </div>
     </div>
   );
 }
