@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+
+import { buildSnapshot, type Snapshot } from "@/lib/snapshots";
 import { getStore } from "@/lib/store";
 import type { Holding, HoldingInput } from "@/lib/types";
 
@@ -28,4 +31,17 @@ export async function bulkInsertHoldings(inputs: HoldingInput[]): Promise<Holdin
 
 export async function replaceAllHoldings(holdings: Holding[]): Promise<Holding[]> {
   return (await getStore()).replaceAll(holdings);
+}
+
+export async function listSnapshots(): Promise<Snapshot[]> {
+  return (await getStore()).listSnapshots();
+}
+
+/** Compute and record a snapshot of the current portfolio (upserted per day). */
+export async function recordCurrentSnapshot(): Promise<Snapshot> {
+  const store = await getStore();
+  const holdings = await store.list();
+  const snapshot = buildSnapshot(holdings, new Date().toISOString(), randomUUID());
+  await store.recordSnapshot(snapshot);
+  return snapshot;
 }

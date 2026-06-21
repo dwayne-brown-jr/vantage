@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { LogOut } from "lucide-react";
 
+import History from "@/components/History";
 import Holdings from "@/components/Holdings";
 import Overview from "@/components/Overview";
 import Plan from "@/components/Plan";
@@ -13,12 +14,13 @@ import { analyze } from "@/lib/analytics";
 import { fmtUSD } from "@/lib/format";
 import type { Holding, HoldingInput } from "@/lib/types";
 
-type Tab = "overview" | "holdings" | "plan" | "strategist";
+type Tab = "overview" | "holdings" | "plan" | "history" | "strategist";
 
 const TABS: [Tab, string][] = [
   ["overview", "Overview"],
   ["holdings", "Holdings"],
   ["plan", "Plan"],
+  ["history", "History"],
   ["strategist", "AI Strategist"],
 ];
 
@@ -181,6 +183,7 @@ export default function AppShell({
         />
       )}
       {tab === "plan" && <Plan a={a} />}
+      {tab === "history" && <History a={a} />}
       {tab === "strategist" && <Strategist a={a} />}
     </div>
   );

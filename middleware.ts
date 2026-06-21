@@ -10,7 +10,7 @@ import { SESSION_COOKIE, isValidSession } from "@/lib/auth";
  * the password is not set (local dev), the app is open.
  */
 export const config = {
-  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico|robots.txt).*)"],
+  matcher: ["/((?!login|api/auth|api/cron|_next/static|_next/image|favicon.ico|robots.txt).*)"],
 };
 
 export async function middleware(req: NextRequest) {

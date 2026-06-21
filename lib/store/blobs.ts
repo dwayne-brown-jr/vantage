@@ -1,6 +1,7 @@
 import { getStore as getBlobStore } from "@netlify/blobs";
 
 import { SEED_HOLDINGS } from "@/lib/seed";
+import { upsertByDay, type Snapshot } from "@/lib/snapshots";
 import { materialize } from "@/lib/store/shared";
 import type { HoldingStore } from "@/lib/store/types";
 import type { Holding } from "@/lib/types";
@@ -70,5 +71,14 @@ export const blobsStore: HoldingStore = {
   async replaceAll(holdings) {
     await writeAll(holdings);
     return holdings;
+  },
+
+  async listSnapshots() {
+    return ((await blobs().get("snapshots", { type: "json" })) as Snapshot[] | null) ?? [];
+  },
+
+  async recordSnapshot(snapshot) {
+    const all = ((await blobs().get("snapshots", { type: "json" })) as Snapshot[] | null) ?? [];
+    await blobs().setJSON("snapshots", upsertByDay(all, snapshot));
   },
 };

@@ -1,3 +1,4 @@
+import type { Snapshot } from "@/lib/snapshots";
 import type { Holding, HoldingInput } from "@/lib/types";
 
 /** Thin typed client for the holdings API (browser-side). */
@@ -53,4 +54,14 @@ export async function refreshPrices(estimateShares = false): Promise<RefreshPric
   return unwrap<RefreshPricesResult>(
     await fetch("/api/prices", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ estimateShares }) }),
   );
+}
+
+export async function fetchSnapshots(): Promise<Snapshot[]> {
+  const data = await unwrap<{ snapshots: Snapshot[] }>(await fetch("/api/snapshots", { cache: "no-store" }));
+  return data.snapshots;
+}
+
+export async function saveSnapshot(): Promise<Snapshot[]> {
+  const data = await unwrap<{ snapshots: Snapshot[] }>(await fetch("/api/snapshots", { method: "POST" }));
+  return data.snapshots;
 }

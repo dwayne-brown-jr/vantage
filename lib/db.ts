@@ -28,6 +28,20 @@ CREATE TABLE IF NOT EXISTS holdings (
   source      TEXT,
   updated_at  TEXT
 );
+CREATE TABLE IF NOT EXISTS snapshots (
+  id          TEXT PRIMARY KEY,
+  at          TEXT NOT NULL,
+  day         TEXT NOT NULL UNIQUE,
+  total       REAL NOT NULL,
+  tsla_value  REAL NOT NULL,
+  tsla_pct    REAL NOT NULL,
+  us_pct      REAL NOT NULL,
+  intl_pct    REAL NOT NULL,
+  bond_pct    REAL NOT NULL,
+  cash_pct    REAL NOT NULL,
+  invested    REAL NOT NULL,
+  unrealized  REAL NOT NULL
+);
 `;
 
 const globalForDb = globalThis as unknown as { __vantageDb?: Database.Database };

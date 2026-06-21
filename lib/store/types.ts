@@ -1,3 +1,4 @@
+import type { Snapshot } from "@/lib/snapshots";
 import type { Holding, HoldingInput } from "@/lib/types";
 
 /**
@@ -12,4 +13,9 @@ export interface HoldingStore {
   bulkInsert(inputs: HoldingInput[]): Promise<Holding[]>;
   /** Replace the entire set of holdings (used by price refresh). */
   replaceAll(holdings: Holding[]): Promise<Holding[]>;
+
+  /** Portfolio snapshots, oldest→newest. */
+  listSnapshots(): Promise<Snapshot[]>;
+  /** Record a snapshot, replacing any existing one for the same calendar day. */
+  recordSnapshot(snapshot: Snapshot): Promise<void>;
 }

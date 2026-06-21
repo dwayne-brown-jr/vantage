@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import type { Snapshot } from "@/lib/snapshots";
 import { materialize } from "@/lib/store/shared";
 import type { HoldingStore } from "@/lib/store/types";
 import type { Holding } from "@/lib/types";
@@ -117,5 +118,43 @@ export const sqliteStore: HoldingStore = {
       for (const h of holdings) insert.run(holdingToRow(h));
     })();
     return holdings;
+  },
+
+  async listSnapshots() {
+    const rows = getDb()
+      .prepare(
+        `SELECT id, at, day, total, tsla_value, tsla_pct, us_pct, intl_pct, bond_pct, cash_pct, invested, unrealized
+         FROM snapshots ORDER BY at ASC`,
+      )
+      .all() as Array<Record<string, string | number>>;
+    return rows.map(
+      (r): Snapshot => ({
+        id: r.id as string,
+        at: r.at as string,
+        day: r.day as string,
+        total: r.total as number,
+        tslaValue: r.tsla_value as number,
+        tslaPct: r.tsla_pct as number,
+        usEquityPct: r.us_pct as number,
+        intlPct: r.intl_pct as number,
+        bondPct: r.bond_pct as number,
+        cashPct: r.cash_pct as number,
+        invested: r.invested as number,
+        unrealized: r.unrealized as number,
+      }),
+    );
+  },
+
+  async recordSnapshot(s) {
+    getDb()
+      .prepare(
+        `INSERT INTO snapshots (id, at, day, total, tsla_value, tsla_pct, us_pct, intl_pct, bond_pct, cash_pct, invested, unrealized)
+         VALUES (@id, @at, @day, @total, @tslaValue, @tslaPct, @usEquityPct, @intlPct, @bondPct, @cashPct, @invested, @unrealized)
+         ON CONFLICT(day) DO UPDATE SET
+           at=excluded.at, total=excluded.total, tsla_value=excluded.tsla_value, tsla_pct=excluded.tsla_pct,
+           us_pct=excluded.us_pct, intl_pct=excluded.intl_pct, bond_pct=excluded.bond_pct, cash_pct=excluded.cash_pct,
+           invested=excluded.invested, unrealized=excluded.unrealized`,
+      )
+      .run(s);
   },
 };
