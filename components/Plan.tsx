@@ -5,9 +5,11 @@ import { useEffect, useMemo, useState } from "react";
 import { projectRsu, targetGaps, type PortfolioAnalysis } from "@/lib/analytics";
 import { COMFORT_CEILING, DEFAULT_TARGETS } from "@/lib/constants";
 import { fmtPct, fmtUSD } from "@/lib/format";
+import { LONG_TERM_RATE, SHORT_TERM_RATE, trimTax } from "@/lib/tax";
 
 const TARGETS_KEY = "vantage_targets";
 const RSU_KEY = "vantage_rsu";
+const TAX_KEY = "vantage_tax";
 
 interface RsuInputs {
   trim: number;
@@ -16,6 +18,15 @@ interface RsuInputs {
   ceiling: number;
 }
 const DEFAULT_RSU: RsuInputs = { trim: 1500, vest: 3000, sellVests: true, ceiling: COMFORT_CEILING };
+
+interface TaxInputs {
+  trim: number;
+  gainPct: number;
+  longTerm: boolean;
+  capGainsRate: number;
+  stateRate: number;
+  taxAdvantaged: boolean;
+}
 
 /** Load a JSON value from localStorage, merged over a default. */
 function useStored<T>(key: string, fallback: T): [T, (v: T) => void] {
@@ -65,6 +76,29 @@ export default function Plan({ a }: { a: PortfolioAnalysis }) {
   );
 
   const maxPct = Math.max(...proj.points.map((p) => p.pct), rsu.ceiling) * 1.12 || 1;
+
+  // Prefill the unrealized gain from the TSLA position (RSU basis ≈ value → ~0).
+  const tslaSym = a.symbols.find((s) => s.symbol === "TSLA");
+  const tslaGainPct =
+    tslaSym && tslaSym.value > 0 ? Math.max(0, ((tslaSym.value - tslaSym.costBasis) / tslaSym.value) * 100) : 0;
+
+  const [tax, setTax] = useStored<TaxInputs>(TAX_KEY, {
+    trim: 1500,
+    gainPct: Math.round(tslaGainPct * 10) / 10,
+    longTerm: true,
+    capGainsRate: LONG_TERM_RATE,
+    stateRate: 0,
+    taxAdvantaged: false,
+  });
+  const taxResult = trimTax({
+    trimAmount: tax.trim,
+    gainPct: tax.gainPct,
+    capGainsRate: tax.capGainsRate,
+    stateRate: tax.stateRate,
+    taxAdvantaged: tax.taxAdvantaged,
+  });
+  const setLongTerm = (longTerm: boolean) =>
+    setTax({ ...tax, longTerm, capGainsRate: longTerm ? LONG_TERM_RATE : SHORT_TERM_RATE });
 
   return (
     <>
@@ -206,6 +240,127 @@ export default function Plan({ a }: { a: PortfolioAnalysis }) {
           trading windows and the tax on RSUs at vest.
         </div>
       </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="sectit">Tax-aware trim — what diversifying actually costs</div>
+        <div className="controls">
+          <div className="ctl">
+            <label htmlFor="tax-trim">Amount of Tesla to trim</label>
+            <div className="ig">
+              <span>$</span>
+              <input
+                id="tax-trim"
+                type="number"
+                step={500}
+                value={tax.trim}
+                onChange={(e) => setTax({ ...tax, trim: Math.max(0, parseFloat(e.target.value) || 0) })}
+              />
+            </div>
+          </div>
+          <div className="ctl">
+            <label htmlFor="tax-gain">Unrealized gain on the position</label>
+            <div className="ig">
+              <input
+                id="tax-gain"
+                type="number"
+                step={1}
+                value={tax.gainPct}
+                onChange={(e) => setTax({ ...tax, gainPct: Math.max(0, parseFloat(e.target.value) || 0) })}
+              />
+              <span>%</span>
+            </div>
+          </div>
+          <div className="ctl">
+            <label htmlFor="tax-rate">Capital-gains rate ({tax.longTerm ? "long-term + NIIT" : "short-term / ordinary"})</label>
+            <div className="ig">
+              <input
+                id="tax-rate"
+                type="number"
+                step={0.1}
+                value={tax.capGainsRate}
+                onChange={(e) => setTax({ ...tax, capGainsRate: Math.max(0, parseFloat(e.target.value) || 0) })}
+              />
+              <span>%</span>
+            </div>
+          </div>
+          <div className="ctl">
+            <label htmlFor="tax-state">State tax rate</label>
+            <div className="ig">
+              <input
+                id="tax-state"
+                type="number"
+                step={0.1}
+                value={tax.stateRate}
+                onChange={(e) => setTax({ ...tax, stateRate: Math.max(0, parseFloat(e.target.value) || 0) })}
+              />
+              <span>%</span>
+            </div>
+          </div>
+          <div className="ctl">
+            <label>Holding period</label>
+            <button type="button" className="toggle" aria-pressed={tax.longTerm} onClick={() => setLongTerm(!tax.longTerm)}>
+              <span className={"tg" + (tax.longTerm ? " on" : "")}>
+                <b />
+              </span>
+              {tax.longTerm ? "Long-term (>1yr)" : "Short-term (<1yr)"}
+            </button>
+          </div>
+          <div className="ctl">
+            <label>Held in Roth / 401(k)?</label>
+            <button
+              type="button"
+              className="toggle"
+              aria-pressed={tax.taxAdvantaged}
+              onClick={() => setTax({ ...tax, taxAdvantaged: !tax.taxAdvantaged })}
+            >
+              <span className={"tg" + (tax.taxAdvantaged ? " on" : "")}>
+                <b />
+              </span>
+              {tax.taxAdvantaged ? "Tax-free to rebalance" : "Taxable account"}
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <Stat label="Realized gain" value={fmtUSD(taxResult.realizedGain)} />
+          <Stat label="Estimated tax" value={fmtUSD(taxResult.tax)} tone="neg" />
+          <Stat label="Net to diversify" value={fmtUSD(taxResult.net)} tone="pos" />
+          <Stat label="Effective rate" value={fmtPct(taxResult.effectiveRate)} />
+        </div>
+
+        <div className="verdict">
+          {tax.taxAdvantaged ? (
+            <>
+              Inside a Roth or 401(k), trimming <b>{fmtUSD(tax.trim)}</b> of Tesla is <b>tax-free</b> — every dollar
+              redeploys. This is exactly why rebalancing the tax-advantaged accounts first is the cheapest path to
+              diversify.
+            </>
+          ) : (
+            <>
+              Trimming <b>{fmtUSD(tax.trim)}</b> realizes <b>{fmtUSD(taxResult.realizedGain)}</b> in gains and costs about{" "}
+              <b>{fmtUSD(taxResult.tax)}</b> in tax (<b>{fmtPct(taxResult.effectiveRate)}</b> effective), leaving{" "}
+              <b>{fmtUSD(taxResult.net)}</b> to diversify. Rebalancing the same amount inside your Roth would be tax-free.
+            </>
+          )}
+        </div>
+        <div className="disc">
+          Educational estimate, not tax advice — it taxes only the gain portion at the rate you enter (long-term
+          defaults to 15% + 3.8% NIIT). Your real cost basis (vest-date price for RSUs), tax bracket, and state rules
+          determine the actual bill. Selling RSUs right at vest usually has little gain; gains accrue as the price rises
+          afterward.
+        </div>
+      </div>
     </>
+  );
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: "pos" | "neg" }) {
+  return (
+    <div className="rounded-2xl border border-line bg-surface2 p-4">
+      <div className="text-[11px] uppercase tracking-[0.12em] text-faint">{label}</div>
+      <div className={`mono mt-1.5 text-2xl font-medium ${tone === "pos" ? "text-green" : tone === "neg" ? "text-red" : "text-txt"}`}>
+        {value}
+      </div>
+    </div>
   );
 }
