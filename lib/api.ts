@@ -40,3 +40,17 @@ export async function importHoldings(holdings: HoldingInput[]): Promise<Holding[
   );
   return data.holdings;
 }
+
+export interface RefreshPricesResult {
+  holdings: Holding[];
+  asOf: string;
+  priced: string[];
+  unresolved: string[];
+  valueUpdated: string[];
+}
+
+export async function refreshPrices(estimateShares = false): Promise<RefreshPricesResult> {
+  return unwrap<RefreshPricesResult>(
+    await fetch("/api/prices", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ estimateShares }) }),
+  );
+}

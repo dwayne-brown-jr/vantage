@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { FileUp, Plus, Trash2 } from "lucide-react";
+import { Calculator, FileUp, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import CsvImport from "@/components/CsvImport";
 import { ASSET_CLASSES, ASSET_CLASS_KEYS } from "@/lib/constants";
@@ -18,9 +18,27 @@ export interface HoldingsProps {
   onAdd: (account: string) => void;
   onDelete: (id: string) => void;
   onImported: (created: Holding[]) => void;
+  onRefreshPrices: (estimateShares?: boolean) => void;
+  refreshing: boolean;
+  pricesAsOf: string | null;
+  priceNote: string | null;
 }
 
-export default function Holdings({ holdings, onLive, onCommit, onAdd, onDelete, onImported }: HoldingsProps) {
+const fmtPrice = (n: number): string =>
+  "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export default function Holdings({
+  holdings,
+  onLive,
+  onCommit,
+  onAdd,
+  onDelete,
+  onImported,
+  onRefreshPrices,
+  refreshing,
+  pricesAsOf,
+  priceNote,
+}: HoldingsProps) {
   const [importing, setImporting] = useState(false);
   const accounts = [...new Set(holdings.map((h) => h.account))];
 
@@ -28,14 +46,41 @@ export default function Holdings({ holdings, onLive, onCommit, onAdd, onDelete, 
     <div className="card">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="sectit" style={{ margin: 0 }}>
-          Holdings — edit values to keep it current
+          Holdings — live prices + manual edits
         </div>
-        {!importing && (
-          <button className="btn-ghost" onClick={() => setImporting(true)}>
-            <FileUp size={15} /> Import CSV
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="btn-ghost"
+            disabled={refreshing}
+            onClick={() => onRefreshPrices(false)}
+            title="Fetch latest prices and recompute values from share counts"
+          >
+            <RefreshCw size={15} className={refreshing ? "spin" : ""} /> {refreshing ? "Refreshing…" : "Refresh prices"}
           </button>
-        )}
+          <button
+            className="btn-ghost"
+            disabled={refreshing}
+            onClick={() => onRefreshPrices(true)}
+            title="Estimate share counts from current values, then price them live"
+          >
+            <Calculator size={15} /> Estimate shares
+          </button>
+          {!importing && (
+            <button className="btn-ghost" onClick={() => setImporting(true)}>
+              <FileUp size={15} /> Import CSV
+            </button>
+          )}
+        </div>
       </div>
+
+      {(pricesAsOf || priceNote) && (
+        <div className="mb-3 text-xs text-muted">
+          {pricesAsOf && (
+            <>Live prices as of {new Date(pricesAsOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</>
+          )}
+          {priceNote && <span style={{ color: "var(--faint)" }}> · {priceNote}</span>}
+        </div>
+      )}
 
       {importing && <CsvImport onImported={onImported} onClose={() => setImporting(false)} />}
 
@@ -54,6 +99,7 @@ export default function Holdings({ holdings, onLive, onCommit, onAdd, onDelete, 
                     <th>Symbol</th>
                     <th>Name</th>
                     <th>Class</th>
+                    <th className="r">Shares</th>
                     <th className="r">Value</th>
                     <th className="r">Cost basis</th>
                     <th />
@@ -98,11 +144,26 @@ export default function Holdings({ holdings, onLive, onCommit, onAdd, onDelete, 
                       </td>
                       <td className="r">
                         <NumberCell
+                          value={h.quantity ?? 0}
+                          ariaLabel="Shares"
+                          blankZero
+                          placeholder="—"
+                          onLive={(n) => onLive(h.id, { quantity: n })}
+                          onCommit={(n) => onCommit(h.id, { quantity: n })}
+                        />
+                      </td>
+                      <td className="r">
+                        <NumberCell
                           value={h.value}
                           ariaLabel="Value"
                           onLive={(n) => onLive(h.id, { value: n })}
                           onCommit={(n) => onCommit(h.id, { value: n })}
                         />
+                        {h.price != null && h.price > 0 && (
+                          <div className="mono" style={{ fontSize: 10, color: "var(--faint)", marginTop: 2 }}>
+                            @ {fmtPrice(h.price)}
+                          </div>
+                        )}
                       </td>
                       <td className="r">
                         <NumberCell
@@ -142,26 +203,34 @@ function NumberCell({
   ariaLabel,
   onLive,
   onCommit,
+  blankZero = false,
+  placeholder,
 }: {
   value: number;
   ariaLabel: string;
   onLive: (n: number) => void;
   onCommit: (n: number) => void;
+  /** Show an empty field (not "0") when the value is 0 — e.g. unset share counts. */
+  blankZero?: boolean;
+  placeholder?: string;
 }) {
-  const [draft, setDraft] = useState(String(value));
+  const display = (v: number): string => (blankZero && v === 0 ? "" : String(v));
+  const [draft, setDraft] = useState(display(value));
   const [focused, setFocused] = useState(false);
 
-  // Resync when the underlying value changes externally (e.g. after import),
+  // Resync when the underlying value changes externally (e.g. after refresh),
   // but never yank the field out from under the user mid-edit.
   useEffect(() => {
-    if (!focused) setDraft(String(value));
-  }, [value, focused]);
+    if (!focused) setDraft(display(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, focused, blankZero]);
 
   return (
     <input
       className="v-input mono"
       inputMode="decimal"
       aria-label={ariaLabel}
+      placeholder={placeholder}
       value={draft}
       onFocus={() => setFocused(true)}
       onChange={(e) => {
@@ -173,7 +242,7 @@ function NumberCell({
         setFocused(false);
         const n = parseFloat(e.target.value);
         const finite = Number.isFinite(n) ? n : 0;
-        setDraft(String(finite));
+        setDraft(display(finite));
         onCommit(finite);
       }}
       onKeyDown={(e) => {

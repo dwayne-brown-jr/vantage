@@ -10,4 +10,6 @@ export interface HoldingStore {
   update(id: string, patch: Partial<HoldingInput>): Promise<Holding | null>;
   remove(id: string): Promise<boolean>;
   bulkInsert(inputs: HoldingInput[]): Promise<Holding[]>;
+  /** Replace the entire set of holdings (used by price refresh). */
+  replaceAll(holdings: Holding[]): Promise<Holding[]>;
 }

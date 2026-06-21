@@ -8,7 +8,7 @@ import Holdings from "@/components/Holdings";
 import Overview from "@/components/Overview";
 import Plan from "@/components/Plan";
 import Strategist from "@/components/Strategist";
-import { createHolding, deleteHolding, updateHolding } from "@/lib/api";
+import { createHolding, deleteHolding, refreshPrices, updateHolding } from "@/lib/api";
 import { analyze } from "@/lib/analytics";
 import { fmtUSD } from "@/lib/format";
 import type { Holding, HoldingInput } from "@/lib/types";
@@ -32,8 +32,31 @@ export default function AppShell({
   const [holdings, setHoldings] = useState<Holding[]>(initialHoldings);
   const [tab, setTab] = useState<Tab>("holdings");
   const [error, setError] = useState<string | null>(null);
+  const [pricesAsOf, setPricesAsOf] = useState<string | null>(null);
+  const [priceNote, setPriceNote] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const a = useMemo(() => analyze(holdings), [holdings]);
+
+  /** Fetch live quotes and recompute values from share counts. */
+  async function onRefreshPrices(estimateShares = false) {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const r = await refreshPrices(estimateShares);
+      setHoldings(r.holdings);
+      setPricesAsOf(r.asOf);
+      const parts: string[] = [];
+      if (r.valueUpdated.length) parts.push(`${r.valueUpdated.length} priced`);
+      if (r.unresolved.length)
+        parts.push(`${r.unresolved.length} manual (${r.unresolved.slice(0, 3).join(", ")}${r.unresolved.length > 3 ? "…" : ""})`);
+      setPriceNote(parts.join(" · ") || "no live-priced holdings yet");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Price refresh failed.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function signOut() {
     try {
@@ -101,7 +124,12 @@ export default function AppShell({
           <span className="tagline">Personal portfolio desk</span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-          <span className="asof mono">as of 6/15/26 · {fmtUSD(a.total)}</span>
+          <span className="asof mono">
+            {pricesAsOf
+              ? `prices ${new Date(pricesAsOf).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+              : "as of 6/15/26"}{" "}
+            · {fmtUSD(a.total)}
+          </span>
           {authEnabled && (
             <button
               onClick={() => void signOut()}
@@ -146,6 +174,10 @@ export default function AppShell({
           onAdd={onAdd}
           onDelete={onDelete}
           onImported={onImported}
+          onRefreshPrices={onRefreshPrices}
+          refreshing={refreshing}
+          pricesAsOf={pricesAsOf}
+          priceNote={priceNote}
         />
       )}
       {tab === "plan" && <Plan a={a} />}

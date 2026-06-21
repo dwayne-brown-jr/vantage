@@ -108,4 +108,14 @@ export const sqliteStore: HoldingStore = {
     })();
     return created;
   },
+
+  async replaceAll(holdings) {
+    const db = getDb();
+    const insert = db.prepare(`INSERT INTO holdings (${COLUMNS}) VALUES (${VALUES})`);
+    db.transaction(() => {
+      db.prepare("DELETE FROM holdings").run();
+      for (const h of holdings) insert.run(holdingToRow(h));
+    })();
+    return holdings;
+  },
 };

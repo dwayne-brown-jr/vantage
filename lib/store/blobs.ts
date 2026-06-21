@@ -66,4 +66,9 @@ export const blobsStore: HoldingStore = {
     await writeAll(all);
     return created;
   },
+
+  async replaceAll(holdings) {
+    await writeAll(holdings);
+    return holdings;
+  },
 };

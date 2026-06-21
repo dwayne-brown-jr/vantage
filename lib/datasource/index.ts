@@ -1,29 +1,68 @@
 /**
- * Data-source adapter interface (STUB — not implemented yet).
+ * Live price feed — the seam the original stub reserved. Quotes come from
+ * Yahoo Finance's public chart endpoint (no API key). It covers US stocks,
+ * ETFs, and mutual funds; institutional/collective 401k funds (no public
+ * ticker) won't resolve and stay manual.
  *
- * Today every holding is a manual snapshot persisted in the local SQLite file.
- * This is the seam where a live price feed or brokerage aggregation would plug
- * in later (e.g. Plaid Investments, SnapTrade, or a quote provider). Keep the
- * interface here; build implementations only when wiring a real feed.
+ * Only ticker symbols are sent out — never holdings, values, or account info.
+ * The adapter is swappable (e.g. a keyed provider) via getDataSource().
  */
-import type { Holding } from "@/lib/types";
-
 export interface PriceQuote {
   symbol: string;
-  /** Per-share price. */
+  /** Per-share price in USD. */
   price: number;
-  /** ISO timestamp the quote was observed. */
+  currency?: string;
+  /** ISO timestamp the quote reflects. */
   asOf: string;
+  name?: string;
 }
 
 export interface DataSourceAdapter {
   readonly id: string;
   readonly label: string;
-  /** Pull fresh per-share prices for the given symbols. */
-  fetchQuotes?(symbols: string[]): Promise<PriceQuote[]>;
-  /** Pull full positions from a linked brokerage. */
-  fetchHoldings?(): Promise<Holding[]>;
+  fetchQuotes(symbols: string[]): Promise<PriceQuote[]>;
 }
 
-/** Registry of available adapters. Empty until a real feed is implemented. */
-export const adapters: DataSourceAdapter[] = [];
+/** Parse one Yahoo chart response into a quote (pure — unit tested). */
+export function parseYahooQuote(json: unknown, fallbackSymbol: string): PriceQuote | null {
+  const meta = (json as { chart?: { result?: Array<{ meta?: Record<string, unknown> }> } })?.chart?.result?.[0]?.meta;
+  const price = meta?.regularMarketPrice;
+  if (!meta || typeof price !== "number" || !Number.isFinite(price)) return null;
+  const t = meta.regularMarketTime;
+  const asOf = typeof t === "number" ? new Date(t * 1000).toISOString() : new Date().toISOString();
+  return {
+    symbol: String(meta.symbol ?? fallbackSymbol).toUpperCase(),
+    price,
+    currency: typeof meta.currency === "string" ? meta.currency : undefined,
+    asOf,
+    name: typeof meta.shortName === "string" ? meta.shortName : undefined,
+  };
+}
+
+async function fetchYahooQuote(symbol: string): Promise<PriceQuote | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return parseYahooQuote(await res.json(), symbol);
+  } catch {
+    return null;
+  }
+}
+
+export const yahooDataSource: DataSourceAdapter = {
+  id: "yahoo",
+  label: "Yahoo Finance",
+  async fetchQuotes(symbols) {
+    const results = await Promise.all(symbols.map(fetchYahooQuote));
+    return results.filter((q): q is PriceQuote => q !== null);
+  },
+};
+
+export function getDataSource(): DataSourceAdapter {
+  return yahooDataSource;
+}
