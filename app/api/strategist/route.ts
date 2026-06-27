@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-sonnet-4-6";
+const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-opus-4-8";
 
 const bodySchema = z.object({
   messages: z

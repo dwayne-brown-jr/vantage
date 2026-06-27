@@ -784,6 +784,125 @@ body {
 .vt .msg.user .bubble {
   color: var(--muted);
 }
+
+/* Markdown rendered inside assistant bubbles */
+.vt .bubble .md {
+  white-space: normal;
+}
+.vt .bubble .md > *:first-child {
+  margin-top: 0;
+}
+.vt .bubble .md > *:last-child {
+  margin-bottom: 0;
+}
+.vt .bubble .md-p {
+  margin: 0 0 10px;
+}
+.vt .bubble .md-h {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  color: var(--txt);
+  letter-spacing: 0.2px;
+  line-height: 1.3;
+  margin: 16px 0 8px;
+}
+.vt .bubble h1.md-h {
+  font-size: 18px;
+}
+.vt .bubble h2.md-h {
+  font-size: 16px;
+}
+.vt .bubble h3.md-h {
+  font-size: 13.5px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gold);
+  font-family: var(--font-sans);
+}
+.vt .bubble .md-ul,
+.vt .bubble .md-ol {
+  margin: 0 0 10px;
+  padding-left: 20px;
+}
+.vt .bubble .md-ul li,
+.vt .bubble .md-ol li {
+  margin: 3px 0;
+}
+.vt .bubble .md strong {
+  color: var(--txt);
+  font-weight: 600;
+}
+.vt .bubble .md em {
+  color: var(--muted);
+}
+.vt .bubble .md a {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.vt .bubble .md code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.vt .bubble .md-code {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 12.5px;
+}
+.vt .bubble .md-code code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.vt .bubble .md-hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 14px 0;
+}
+.vt .bubble .md-tablewrap {
+  margin: 4px 0 12px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.vt .bubble .md-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+}
+.vt .bubble .md-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--gold);
+  font-size: 10.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 9px 12px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.vt .bubble .md-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  color: var(--txt);
+}
+.vt .bubble .md-table tr:last-child td {
+  border-bottom: none;
+}
+.vt .bubble .md-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.014);
+}
+
 .vt .chips {
   display: flex;
   flex-wrap: wrap;

@@ -6,6 +6,7 @@ import { RefreshCw, Send, Sparkles } from "lucide-react";
 
 import type { PortfolioAnalysis } from "@/lib/analytics";
 import { fmtPct, fmtUSD } from "@/lib/format";
+import Markdown from "@/components/Markdown";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -13,8 +14,8 @@ interface ChatMessage {
 }
 
 const CHIPS = [
+  "Give me a complete sell-and-reinvest plan, no fluff.",
   "How concentrated am I, really?",
-  "Where should my next $150 go?",
   "What are my riskiest holdings?",
   "Any news affecting my holdings today?",
 ];
@@ -99,7 +100,7 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
                 "You"
               )}
             </div>
-            <div className="bubble">{m.text}</div>
+            <div className="bubble">{m.role === "assistant" ? <Markdown source={m.text} /> : m.text}</div>
           </div>
         ))}
 
@@ -110,7 +111,7 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
                 <Sparkles size={12} /> Strategist
               </span>
             </div>
-            <div className="bubble">{streaming}</div>
+            <div className="bubble"><Markdown source={streaming} /></div>
           </div>
         )}
 
