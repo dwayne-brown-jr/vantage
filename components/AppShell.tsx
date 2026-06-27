@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { LogOut } from "lucide-react";
 
+import ChartTab from "@/components/ChartTab";
 import History from "@/components/History";
 import Holdings from "@/components/Holdings";
 import Overview from "@/components/Overview";
@@ -15,11 +16,12 @@ import { analyze } from "@/lib/analytics";
 import { fmtUSD } from "@/lib/format";
 import type { Holding, HoldingInput } from "@/lib/types";
 
-type Tab = "overview" | "holdings" | "plan" | "history" | "strategist";
+type Tab = "overview" | "holdings" | "chart" | "plan" | "history" | "strategist";
 
 const TABS: [Tab, string][] = [
   ["overview", "Overview"],
   ["holdings", "Holdings"],
+  ["chart", "Chart"],
   ["plan", "Plan"],
   ["history", "History"],
   ["strategist", "AI Strategist"],
@@ -214,6 +216,7 @@ export default function AppShell({
           priceNote={priceNote}
         />
       )}
+      {tab === "chart" && <ChartTab symbols={a.symbols.map((s) => ({ symbol: s.symbol, name: s.name }))} />}
       {tab === "plan" && <Plan a={a} />}
       {tab === "history" && <History a={a} />}
       {tab === "strategist" && <Strategist a={a} />}
