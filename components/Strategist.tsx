@@ -2,21 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { RefreshCw, Send, Sparkles } from "lucide-react";
+import { ClipboardList, RefreshCw, Send, Sparkles } from "lucide-react";
 
 import type { PortfolioAnalysis } from "@/lib/analytics";
+import type { Plan } from "@/lib/plan";
 import { fmtPct, fmtUSD } from "@/lib/format";
 import Markdown from "@/components/Markdown";
+import PlanCards from "@/components/PlanCards";
 
 interface ChatMessage {
   role: "user" | "assistant";
   text: string;
+  /** When present, this assistant turn renders as structured plan cards. */
+  plan?: Plan;
 }
 
 const CHIPS = [
-  "Give me a complete sell-and-reinvest plan, no fluff.",
   "How concentrated am I, really?",
   "What are my riskiest holdings?",
+  "Where should my next $150 go?",
   "Any news affecting my holdings today?",
 ];
 
@@ -86,6 +90,32 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
     }
   }
 
+  /** Ask for a structured sell/reinvest plan and render it as action cards. */
+  async function buildPlan() {
+    if (busy) return;
+    setBusy(true);
+    setStreaming("");
+    setMessages((m) => [...m, { role: "user", text: "Build my full sell & reinvest plan." }]);
+
+    try {
+      const res = await fetch("/api/strategist/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const body = (await res.json().catch(() => null)) as { plan?: Plan; error?: string } | null;
+      if (!res.ok || !body?.plan) throw new Error(body?.error ?? `Request failed (${res.status})`);
+      setMessages((m) => [...m, { role: "assistant", text: "", plan: body.plan }]);
+    } catch (e) {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", text: e instanceof Error ? e.message : "Couldn't build the plan. Try again in a moment." },
+      ]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="card chat">
       <div className="msgs" ref={scrollRef}>
@@ -100,7 +130,9 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
                 "You"
               )}
             </div>
-            <div className="bubble">{m.role === "assistant" ? <Markdown source={m.text} /> : m.text}</div>
+            <div className="bubble">
+              {m.role !== "assistant" ? m.text : m.plan ? <PlanCards plan={m.plan} /> : <Markdown source={m.text} />}
+            </div>
           </div>
         ))}
 
@@ -131,6 +163,13 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
           ))}
         </div>
       )}
+
+      <div className="planbar">
+        <button type="button" className="planbtn" onClick={() => void buildPlan()} disabled={busy}>
+          <ClipboardList size={15} /> Build my full sell &amp; reinvest plan
+        </button>
+        <span className="planbar-hint">structured cards with per-account tax</span>
+      </div>
 
       <div className="inbar">
         <input

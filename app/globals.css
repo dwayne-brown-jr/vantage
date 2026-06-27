@@ -974,6 +974,207 @@ body {
   }
 }
 
+/* Build-my-plan action bar */
+.vt .planbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+.vt .planbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gold);
+  background: linear-gradient(180deg, rgba(205, 164, 52, 0.12), rgba(205, 164, 52, 0.05));
+  border: 1px solid var(--gold-dim);
+  padding: 9px 15px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.vt .planbtn:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(205, 164, 52, 0.2), rgba(205, 164, 52, 0.08));
+  border-color: var(--gold);
+}
+.vt .planbtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.vt .planbar-hint {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+
+/* Structured plan cards (rendered inside an assistant bubble) */
+.vt .bubble .plan {
+  white-space: normal;
+}
+.vt .plan-summary {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--txt);
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+.vt .plan-totals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+.vt .plan-tile {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.vt .plan-tile-l {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+.vt .plan-tile-v {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--txt);
+}
+.vt .plan-tile-v.pos {
+  color: var(--green);
+}
+.vt .plan-tile-v.neg {
+  color: var(--red);
+}
+.vt .plan-sec {
+  margin-bottom: 16px;
+}
+.vt .plan-sec-h {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 9px;
+}
+.vt .plan-sec-h.sell {
+  color: var(--red);
+}
+.vt .plan-sec-h.buy {
+  color: var(--green);
+}
+.vt .plan-card {
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 9px;
+  padding: 11px 13px;
+  margin-bottom: 8px;
+}
+.vt .plan-card.sell {
+  border-left-color: var(--red);
+}
+.vt .plan-card.buy {
+  border-left-color: var(--green);
+}
+.vt .plan-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.vt .plan-card-id {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.vt .plan-sym {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.vt .plan-name {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.vt .plan-acct {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.vt .plan-amt {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--txt);
+  white-space: nowrap;
+}
+.vt .plan-why {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.vt .plan-tax {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--faint);
+  margin-top: 7px;
+}
+.vt .plan-tax .net {
+  color: var(--green);
+}
+.vt .plan-tax .gain {
+  color: var(--muted);
+}
+.vt .plan-tax .dot {
+  color: var(--line);
+}
+.vt .plan-tax .tax-free {
+  color: var(--green);
+  letter-spacing: 0.3px;
+}
+.vt .plan-cautions {
+  border-top: 1px solid var(--line);
+  padding-top: 11px;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vt .plan-caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--orange);
+}
+.vt .plan-caution svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.vt .plan-disc {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--faint);
+  margin-top: 12px;
+}
+@media (max-width: 640px) {
+  .vt .plan-totals {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ───────────────────────── toasts ───────────────────────── */
 .toasts {
   position: fixed;
