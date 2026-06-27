@@ -1,4 +1,6 @@
+import type { Candle } from "@/lib/datasource";
 import type { Snapshot } from "@/lib/snapshots";
+import type { Technicals } from "@/lib/technicals";
 import type { Holding, HoldingInput } from "@/lib/types";
 
 /** Thin typed client for the holdings API (browser-side). */
@@ -64,4 +66,26 @@ export async function fetchSnapshots(): Promise<Snapshot[]> {
 export async function saveSnapshot(): Promise<Snapshot[]> {
   const data = await unwrap<{ snapshots: Snapshot[] }>(await fetch("/api/snapshots", { method: "POST" }));
   return data.snapshots;
+}
+
+export interface PriceHistory {
+  symbol: string;
+  candles: Candle[];
+  technicals: Technicals | null;
+  note?: string;
+}
+
+export async function fetchPriceHistory(symbol: string, range: string): Promise<PriceHistory> {
+  return unwrap<PriceHistory>(
+    await fetch(`/api/history?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}`, {
+      cache: "no-store",
+    }),
+  );
+}
+
+export async function fetchChartInsight(payload: { symbol: string; name?: string; technicals: Technicals }): Promise<string> {
+  const data = await unwrap<{ text: string }>(
+    await fetch("/api/chart-insight", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) }),
+  );
+  return data.text;
 }

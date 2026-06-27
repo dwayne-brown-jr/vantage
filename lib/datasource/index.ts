@@ -66,3 +66,52 @@ export const yahooDataSource: DataSourceAdapter = {
 export function getDataSource(): DataSourceAdapter {
   return yahooDataSource;
 }
+
+/* ── historical candles (for charting) ───────────────────────────────────── */
+export interface Candle {
+  /** Epoch seconds (lightweight-charts UTCTimestamp). */
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+/** Parse a Yahoo chart response into clean candles (drops incomplete bars). */
+export function parseYahooHistory(json: unknown): Candle[] {
+  const result = (
+    json as { chart?: { result?: Array<{ timestamp?: number[]; indicators?: { quote?: Array<Record<string, Array<number | null>>> } }> } }
+  )?.chart?.result?.[0];
+  const ts = result?.timestamp;
+  const q = result?.indicators?.quote?.[0];
+  if (!Array.isArray(ts) || !q) return [];
+
+  const candles: Candle[] = [];
+  for (let i = 0; i < ts.length; i++) {
+    const o = q.open?.[i];
+    const h = q.high?.[i];
+    const l = q.low?.[i];
+    const c = q.close?.[i];
+    const v = q.volume?.[i];
+    const ok = [o, h, l, c].every((x) => typeof x === "number" && Number.isFinite(x));
+    if (ok) candles.push({ time: ts[i]!, open: o!, high: h!, low: l!, close: c!, volume: typeof v === "number" ? v : 0 });
+  }
+  return candles;
+}
+
+/** Fetch daily candles for a symbol. `range` like "6mo" | "1y" | "2y". */
+export async function fetchHistory(symbol: string, range = "1y"): Promise<Candle[]> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=${encodeURIComponent(range)}`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(12_000),
+      cache: "no-store",
+    });
+    if (!res.ok) return [];
+    return parseYahooHistory(await res.json());
+  } catch {
+    return [];
+  }
+}
