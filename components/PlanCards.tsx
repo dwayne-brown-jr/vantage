@@ -5,17 +5,22 @@ import { fmtSignedPct, fmtUSD } from "@/lib/format";
 
 /** Render a structured rebalance plan as red Sell / green Buy action cards. */
 export default function PlanCards({ plan }: { plan: Plan }) {
+  const hasMoves = plan.sells.length > 0 || plan.reinvests.length > 0;
+
   return (
     <div className="plan">
       {plan.summary && <div className="plan-summary">{plan.summary}</div>}
 
-      <div className="plan-totals">
-        <Tile label="Sell" value={fmtUSD(plan.totalSell)} />
-        <Tile label="Est. tax" value={fmtUSD(plan.totalTax)} tone="neg" />
-        <Tile label="Freed to reinvest" value={fmtUSD(plan.totalNet)} tone="pos" />
-        <Tile label="Reinvested" value={fmtUSD(plan.totalReinvest)} />
-      </div>
+      {hasMoves && (
+        <div className="plan-totals">
+          <Tile label="Sell" value={fmtUSD(plan.totalSell)} />
+          <Tile label="Est. tax" value={fmtUSD(plan.totalTax)} tone="neg" />
+          <Tile label="Freed to reinvest" value={fmtUSD(plan.totalNet)} tone="pos" />
+          <Tile label="Reinvested" value={fmtUSD(plan.totalReinvest)} />
+        </div>
+      )}
 
+      {plan.sells.length > 0 && (
       <div className="plan-sec">
         <div className="plan-sec-h sell">
           <ArrowDownRight size={14} /> Sell
@@ -46,7 +51,9 @@ export default function PlanCards({ plan }: { plan: Plan }) {
           </div>
         ))}
       </div>
+      )}
 
+      {plan.reinvests.length > 0 && (
       <div className="plan-sec">
         <div className="plan-sec-h buy">
           <ArrowUpRight size={14} /> Reinvest
@@ -65,6 +72,7 @@ export default function PlanCards({ plan }: { plan: Plan }) {
           </div>
         ))}
       </div>
+      )}
 
       {plan.cautions.length > 0 && (
         <div className="plan-cautions">

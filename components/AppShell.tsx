@@ -217,7 +217,7 @@ export default function AppShell({
         />
       )}
       {tab === "chart" && <ChartTab symbols={a.symbols.map((s) => ({ symbol: s.symbol, name: s.name }))} />}
-      {tab === "plan" && <Plan a={a} />}
+      {tab === "plan" && <Plan a={a} holdings={holdings} />}
       {tab === "history" && <History a={a} />}
       {tab === "strategist" && <Strategist a={a} />}
     </div>

@@ -1009,8 +1009,37 @@ body {
   color: var(--faint);
 }
 
-/* Structured plan cards (rendered inside an assistant bubble) */
-.vt .bubble .plan {
+/* One-click rebalance bar (Plan tab) */
+.vt .rebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.vt .planbtn.ghost {
+  color: var(--muted);
+  background: var(--surface2);
+  border-color: var(--line);
+}
+.vt .planbtn.ghost:hover:not(:disabled) {
+  color: var(--txt);
+  border-color: var(--gold-dim);
+  background: var(--surface2);
+}
+.vt .rebar-hint {
+  font-size: 11.5px;
+  color: var(--faint);
+}
+.vt .rebal-result {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+/* Structured plan cards (rendered in an assistant bubble or the Plan tab) */
+.vt .bubble .plan,
+.vt .rebal-result .plan {
   white-space: normal;
 }
 .vt .plan-summary {

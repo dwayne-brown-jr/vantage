@@ -2,10 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { RefreshCw, Scale, Sparkles } from "lucide-react";
+
 import { projectRsu, targetGaps, type PortfolioAnalysis } from "@/lib/analytics";
 import { COMFORT_CEILING, DEFAULT_TARGETS } from "@/lib/constants";
 import { fmtPct, fmtUSD } from "@/lib/format";
+import { enrichPlan, type Plan as PlanResult } from "@/lib/plan";
+import { computeRebalance } from "@/lib/rebalance";
 import { LONG_TERM_RATE, SHORT_TERM_RATE, trimTax } from "@/lib/tax";
+import type { Holding } from "@/lib/types";
+import PlanCards from "@/components/PlanCards";
 
 const TARGETS_KEY = "vantage_targets";
 const RSU_KEY = "vantage_rsu";
@@ -56,11 +62,51 @@ function useStored<T>(key: string, fallback: T): [T, (v: T) => void] {
   return [value, setValue];
 }
 
-export default function Plan({ a }: { a: PortfolioAnalysis }) {
+export default function Plan({ a, holdings }: { a: PortfolioAnalysis; holdings: Holding[] }) {
   const [targets, setTargets] = useStored<Record<string, number>>(TARGETS_KEY, DEFAULT_TARGETS);
   const [rsu, setRsu] = useStored<RsuInputs>(RSU_KEY, DEFAULT_RSU);
 
   const gaps = targetGaps(a.buckets, targets, a.total);
+
+  // One-click rebalance: instant deterministic plan, optionally refined by AI.
+  const [rebalance, setRebalance] = useState<PlanResult | null>(null);
+  const [aiPlan, setAiPlan] = useState<PlanResult | null>(null);
+  const [refining, setRefining] = useState(false);
+  const [refineError, setRefineError] = useState<string | null>(null);
+
+  function runRebalance() {
+    setAiPlan(null);
+    setRefineError(null);
+    setRebalance(enrichPlan(computeRebalance(holdings, a, targets), holdings));
+  }
+
+  async function refineWithAi() {
+    if (refining) return;
+    setRefining(true);
+    setRefineError(null);
+    try {
+      const instruction =
+        "Rebalance the portfolio to hit these exact target percentages: " +
+        Object.entries(targets)
+          .map(([k, v]) => `${k} ${v}%`)
+          .join(", ") +
+        ". Give the tax-optimal, account-by-account moves to reach them — prefer tax-free Roth/401(k) trims, bonds in tax-deferred, international in the Roth.";
+      const res = await fetch("/api/strategist/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instruction }),
+      });
+      const body = (await res.json().catch(() => null)) as { plan?: PlanResult; error?: string } | null;
+      if (!res.ok || !body?.plan) throw new Error(body?.error ?? `Request failed (${res.status})`);
+      setAiPlan(body.plan);
+    } catch (e) {
+      setRefineError(e instanceof Error ? e.message : "Couldn't refine the plan. Try again in a moment.");
+    } finally {
+      setRefining(false);
+    }
+  }
+
+  const shownPlan = aiPlan ?? rebalance;
 
   const proj = useMemo(
     () =>
@@ -136,6 +182,47 @@ export default function Plan({ a }: { a: PortfolioAnalysis }) {
           Targets are a starting point you can edit — the defaults reflect an age-appropriate, globally diversified,
           equity-heavy mix. The 2060 fund&apos;s international and bonds are counted in your actuals.
         </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 18 }}>
+        <div className="sectit">One-click rebalance — get a strategy to hit your targets</div>
+        <div className="rebar">
+          <button type="button" className="planbtn" onClick={runRebalance}>
+            <Scale size={15} /> Rebalance to my targets
+          </button>
+          {shownPlan && !aiPlan && (
+            <button type="button" className="planbtn ghost" onClick={() => void refineWithAi()} disabled={refining}>
+              {refining ? <RefreshCw size={15} className="spin" /> : <Sparkles size={15} />}
+              {refining ? "Refining…" : "Refine with AI (tax-aware routing)"}
+            </button>
+          )}
+          <span className="rebar-hint">
+            {aiPlan
+              ? "AI-refined strategy"
+              : rebalance
+                ? "Instant strategy — refine for tax-aware account routing"
+                : "Instant math, then optionally refine with AI"}
+          </span>
+        </div>
+
+        {refineError && (
+          <div className="disc" style={{ color: "var(--red)" }} role="alert">
+            {refineError}
+          </div>
+        )}
+
+        {!shownPlan && (
+          <div className="disc">
+            Computes exactly which holdings to sell and where to redeploy to reach your target mix above — instantly, from
+            your own numbers. Then refine with the strategist for tax-optimal account routing.
+          </div>
+        )}
+
+        {shownPlan && (
+          <div className="rebal-result">
+            <PlanCards plan={shownPlan} />
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ marginTop: 18 }}>

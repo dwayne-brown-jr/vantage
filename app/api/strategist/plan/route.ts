@@ -1,9 +1,40 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
+import { classifyAccount } from "@/lib/accounts";
 import { enrichPlan, PLAN_TOOL_SCHEMA, type PlanInput } from "@/lib/plan";
 import { listHoldings } from "@/lib/repository";
 import { STRATEGIST_SYSTEM, buildStrategistContext } from "@/lib/strategist";
+import type { Holding } from "@/lib/types";
+
+/** Largest fund-holding account (tax-advantaged first) — never the RSU grant. */
+function fundAccount(holdings: Holding[]): string {
+  const totals = new Map<string, number>();
+  for (const h of holdings) totals.set(h.account, (totals.get(h.account) ?? 0) + h.value);
+  const nonRsu = [...totals.entries()]
+    .filter(([acc]) => classifyAccount(acc).treatment !== "rsu")
+    .sort((a, b) => b[1] - a[1]);
+  const taxAdv = nonRsu.filter(([acc]) => classifyAccount(acc).taxFreeToRebalance);
+  return taxAdv[0]?.[0] ?? nonRsu[0]?.[0] ?? holdings[0]?.account ?? "Brokerage";
+}
+
+/**
+ * Deterministic guardrails on the model's plan: you can't buy funds inside an
+ * RSU grant account (proceeds land in a brokerage), and the taxable SWPPX is a
+ * hold. The model is told both, but enforce them so a stray row never shows.
+ */
+function sanitizePlan(plan: PlanInput, holdings: Holding[]): PlanInput {
+  const dest = fundAccount(holdings);
+  return {
+    ...plan,
+    sells: plan.sells.filter(
+      (s) => !(s.symbol.toUpperCase() === "SWPPX" && classifyAccount(s.account).treatment === "taxable"),
+    ),
+    reinvests: plan.reinvests.map((r) =>
+      classifyAccount(r.account).treatment === "rsu" ? { ...r, account: dest } : r,
+    ),
+  };
+}
 
 // Reads holdings + the server-only ANTHROPIC_API_KEY → Node runtime.
 export const runtime = "nodejs";
@@ -12,40 +43,40 @@ export const maxDuration = 60;
 
 const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-opus-4-8";
 
-/** Tolerate "$15,000" / "~15000" if the model strays from plain integers. */
-const dollars = z.preprocess((v) => {
-  if (typeof v === "number") return v;
-  if (typeof v === "string") {
-    const n = parseFloat(v.replace(/[^0-9.-]/g, ""));
-    return Number.isFinite(n) ? n : v;
-  }
-  return v;
-}, z.number());
+/** Tolerate "$15,000" / "~15000" / "2500-3000" if the model strays from integers. */
+const dollars = z
+  .preprocess((v) => {
+    if (typeof v === "number") return v;
+    if (typeof v === "string") {
+      const n = parseFloat(v.replace(/[^0-9.-]/g, ""));
+      return Number.isFinite(n) ? n : 0;
+    }
+    return v;
+  }, z.number())
+  .catch(0);
+
+// Display fields default to "" and cautions drop non-strings, so a minor model
+// deviation degrades a row gracefully instead of failing the whole plan. The
+// structural fields (account/symbol/amount) stay required.
+const str = z.string().optional().default("");
 
 const planSchema = z.object({
-  summary: z.string(),
+  summary: str,
   sells: z
-    .array(
-      z.object({
-        account: z.string(),
-        symbol: z.string(),
-        amount: dollars,
-        reason: z.string(),
-      }),
-    )
-    .max(20),
+    .array(z.object({ account: z.string(), symbol: z.string(), amount: dollars, reason: str }))
+    .max(30)
+    .optional()
+    .default([]),
   reinvests: z
-    .array(
-      z.object({
-        account: z.string(),
-        symbol: z.string(),
-        name: z.string(),
-        amount: dollars,
-        reason: z.string(),
-      }),
-    )
-    .max(20),
-  cautions: z.array(z.string()).max(10),
+    .array(z.object({ account: z.string(), symbol: z.string(), name: str, amount: dollars, reason: str }))
+    .max(30)
+    .optional()
+    .default([]),
+  cautions: z
+    .array(z.unknown())
+    .optional()
+    .default([])
+    .transform((a) => a.filter((x): x is string => typeof x === "string")),
 });
 
 function jsonError(message: string, status: number): Response {
@@ -85,8 +116,9 @@ export async function POST(req: Request) {
 
   const client = new Anthropic();
 
-  let raw: unknown;
-  try {
+  // Force the structured tool call. The model occasionally deviates from the
+  // schema, so try twice before giving up.
+  async function emitPlan(): Promise<unknown | null> {
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 2048,
@@ -102,17 +134,33 @@ export async function POST(req: Request) {
       messages: [{ role: "user", content: task }],
     });
     const block = message.content.find((b) => b.type === "tool_use");
-    if (!block || block.type !== "tool_use") return jsonError("The model did not return a plan. Try again.", 502);
-    raw = block.input;
-  } catch {
-    return jsonError("Something went wrong reaching the model. Please try again.", 502);
+    return block && block.type === "tool_use" ? block.input : null;
   }
 
-  const parsed = planSchema.safeParse(raw);
-  if (!parsed.success) return jsonError("The model returned an unexpected plan shape. Try again.", 502);
+  let parsedPlan: PlanInput | null = null;
+  for (let attempt = 0; attempt < 2 && !parsedPlan; attempt++) {
+    let raw: unknown | null;
+    try {
+      raw = await emitPlan();
+    } catch {
+      return jsonError("Something went wrong reaching the model. Please try again.", 502);
+    }
+    if (raw == null) continue;
+    const parsed = planSchema.safeParse(raw);
+    if (parsed.success) {
+      parsedPlan = parsed.data as PlanInput;
+    } else {
+      console.error("emit_plan shape mismatch", {
+        keys: raw && typeof raw === "object" ? Object.keys(raw) : typeof raw,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+    }
+  }
 
-  // Deterministic tax math + totals from the real holdings.
-  const plan = enrichPlan(parsed.data as PlanInput, holdings);
+  if (!parsedPlan) return jsonError("The model returned an unexpected plan shape. Try again.", 502);
+
+  // Deterministic guardrails + tax math + totals from the real holdings.
+  const plan = enrichPlan(sanitizePlan(parsedPlan, holdings), holdings);
   return new Response(JSON.stringify({ plan }), {
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
