@@ -2,7 +2,7 @@ import { getStore as getBlobStore } from "@netlify/blobs";
 
 import { SEED_HOLDINGS } from "@/lib/seed";
 import { upsertByDay, type Snapshot } from "@/lib/snapshots";
-import { materialize } from "@/lib/store/shared";
+import { materialize, mergeImport } from "@/lib/store/shared";
 import type { HoldingStore } from "@/lib/store/types";
 import type { Holding } from "@/lib/types";
 
@@ -60,12 +60,10 @@ export const blobsStore: HoldingStore = {
     return true;
   },
 
-  async bulkInsert(inputs) {
-    const all = await readAll();
-    const created = inputs.map(materialize);
-    all.push(...created);
-    await writeAll(all);
-    return created;
+  async bulkUpsert(inputs) {
+    const result = mergeImport(await readAll(), inputs);
+    await writeAll(result.holdings);
+    return result;
   },
 
   async replaceAll(holdings) {

@@ -25,8 +25,9 @@ export async function deleteHolding(id: string): Promise<boolean> {
   return (await getStore()).remove(id);
 }
 
-export async function bulkInsertHoldings(inputs: HoldingInput[]): Promise<Holding[]> {
-  return (await getStore()).bulkInsert(inputs);
+/** Import a batch, upserting by (account, symbol) — see HoldingStore.bulkUpsert. */
+export async function upsertImportedHoldings(inputs: HoldingInput[]) {
+  return (await getStore()).bulkUpsert(inputs);
 }
 
 export async function replaceAllHoldings(holdings: Holding[]): Promise<Holding[]> {

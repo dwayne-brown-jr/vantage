@@ -145,9 +145,15 @@ export default function AppShell({
     }
   }
 
-  function onImported(created: Holding[]) {
-    setHoldings((hs) => [...hs, ...created]);
-    toast({ message: `Imported ${created.length} position${created.length === 1 ? "" : "s"}`, tone: "ok" });
+  function onImported(next: Holding[], summary: { created: number; updated: number }) {
+    // The server upserts by (account, symbol) and returns the full set — replace,
+    // don't append, so refreshed positions aren't duplicated in the UI.
+    setHoldings(next);
+    const parts = [
+      summary.created > 0 ? `added ${summary.created}` : "",
+      summary.updated > 0 ? `refreshed ${summary.updated}` : "",
+    ].filter(Boolean);
+    toast({ message: `Import complete — ${parts.join(" · ") || "no changes"}`, tone: "ok" });
   }
 
   return (

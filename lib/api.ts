@@ -37,11 +37,18 @@ export async function deleteHolding(id: string): Promise<void> {
   await unwrap<{ ok: true }>(await fetch(`/api/holdings/${id}`, { method: "DELETE" }));
 }
 
-export async function importHoldings(holdings: HoldingInput[]): Promise<Holding[]> {
-  const data = await unwrap<{ holdings: Holding[]; count: number }>(
+export interface ImportResult {
+  /** The full holdings set after the upsert. */
+  holdings: Holding[];
+  created: number;
+  updated: number;
+}
+
+export async function importHoldings(holdings: HoldingInput[]): Promise<ImportResult> {
+  const data = await unwrap<ImportResult & { count: number }>(
     await fetch("/api/holdings/import", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ holdings }) }),
   );
-  return data.holdings;
+  return { holdings: data.holdings, created: data.created, updated: data.updated };
 }
 
 export interface RefreshPricesResult {

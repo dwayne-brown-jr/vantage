@@ -1,3 +1,4 @@
+import type { MergeImportResult } from "@/lib/store/shared";
 import type { Snapshot } from "@/lib/snapshots";
 import type { Holding, HoldingInput } from "@/lib/types";
 
@@ -10,7 +11,12 @@ export interface HoldingStore {
   create(input: HoldingInput): Promise<Holding>;
   update(id: string, patch: Partial<HoldingInput>): Promise<Holding | null>;
   remove(id: string): Promise<boolean>;
-  bulkInsert(inputs: HoldingInput[]): Promise<Holding[]>;
+  /**
+   * Import a batch, upserting by (account, symbol): existing positions are
+   * refreshed, genuinely new ones are added. Returns the full holdings set plus
+   * how many were created vs updated.
+   */
+  bulkUpsert(inputs: HoldingInput[]): Promise<MergeImportResult>;
   /** Replace the entire set of holdings (used by price refresh). */
   replaceAll(holdings: Holding[]): Promise<Holding[]>;
 

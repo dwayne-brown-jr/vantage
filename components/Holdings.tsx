@@ -17,7 +17,7 @@ export interface HoldingsProps {
   onCommit: (id: string, patch: Partial<HoldingInput>) => void;
   onAdd: (account: string) => void;
   onDelete: (id: string) => void;
-  onImported: (created: Holding[]) => void;
+  onImported: (holdings: Holding[], summary: { created: number; updated: number }) => void;
   onRefreshPrices: (estimateShares?: boolean) => void;
   refreshing: boolean;
   pricesAsOf: string | null;
@@ -83,7 +83,7 @@ export default function Holdings({
         </div>
       )}
 
-      {importing && <CsvImport onImported={onImported} onClose={() => setImporting(false)} />}
+      {importing && <CsvImport holdings={holdings} onImported={onImported} onClose={() => setImporting(false)} />}
 
       {accounts.map((account) => {
         const rows = holdings.filter((h) => h.account === account);

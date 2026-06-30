@@ -1009,6 +1009,29 @@ body {
   color: var(--faint);
 }
 
+/* CSV import row tags (New / Refresh) */
+.vt .imptag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.vt .imptag.new {
+  color: var(--green);
+  border-color: color-mix(in srgb, var(--green) 40%, var(--line));
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+}
+.vt .imptag.upd {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+
 /* One-click rebalance bar (Plan tab) */
 .vt .rebar {
   display: flex;

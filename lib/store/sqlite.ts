@@ -1,6 +1,6 @@
 import { getDb } from "@/lib/db";
 import type { Snapshot } from "@/lib/snapshots";
-import { materialize } from "@/lib/store/shared";
+import { materialize, mergeImport } from "@/lib/store/shared";
 import type { HoldingStore } from "@/lib/store/types";
 import type { Holding } from "@/lib/types";
 
@@ -96,18 +96,17 @@ export const sqliteStore: HoldingStore = {
     return getDb().prepare("DELETE FROM holdings WHERE id = ?").run(id).changes > 0;
   },
 
-  async bulkInsert(inputs) {
+  async bulkUpsert(inputs) {
     const db = getDb();
+    const existing = (db.prepare(`SELECT ${COLUMNS} FROM holdings`).all() as HoldingRow[]).map(rowToHolding);
+    const result = mergeImport(existing, inputs);
+    // Atomically rewrite the table from the merged set (ids preserved).
     const insert = db.prepare(`INSERT INTO holdings (${COLUMNS}) VALUES (${VALUES})`);
-    const created: Holding[] = [];
     db.transaction(() => {
-      for (const input of inputs) {
-        const holding = materialize(input);
-        insert.run(holdingToRow(holding));
-        created.push(holding);
-      }
+      db.prepare("DELETE FROM holdings").run();
+      for (const h of result.holdings) insert.run(holdingToRow(h));
     })();
-    return created;
+    return result;
   },
 
   async replaceAll(holdings) {

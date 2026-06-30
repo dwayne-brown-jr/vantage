@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { Check, TriangleAlert, Upload, X } from "lucide-react";
 
-import { importHoldings } from "@/lib/api";
+import { importHoldings, type ImportResult } from "@/lib/api";
 import { ASSET_CLASSES, ASSET_CLASS_KEYS } from "@/lib/constants";
 import { CsvParseError, parseBrokerCsv, type BrokerFormat } from "@/lib/csv";
 import { fmtUSD } from "@/lib/format";
@@ -17,10 +17,13 @@ const FORMAT_LABELS: Record<BrokerFormat, string> = {
 };
 
 export default function CsvImport({
+  holdings,
   onImported,
   onClose,
 }: {
-  onImported: (created: Holding[]) => void;
+  /** Existing holdings, so the preview can flag which rows will update vs. add. */
+  holdings: Holding[];
+  onImported: (holdings: Holding[], summary: { created: number; updated: number }) => void;
   onClose: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,8 +59,8 @@ export default function CsvImport({
     setError(null);
     try {
       const payload = rows.map((r) => ({ ...r, account: accountLabel.trim() || r.account }));
-      const created = await importHoldings(payload);
-      onImported(created);
+      const result: ImportResult = await importHoldings(payload);
+      onImported(result.holdings, { created: result.created, updated: result.updated });
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Import failed.");
@@ -68,6 +71,18 @@ export default function CsvImport({
 
   const total = rows.reduce((s, r) => s + r.value, 0);
   const hasPreview = format !== null && rows.length > 0;
+
+  // Which incoming rows match an existing position in the chosen account —
+  // these will be refreshed, not duplicated.
+  const existingSymbols = useMemo(() => {
+    const label = accountLabel.trim();
+    const set = new Set<string>();
+    for (const h of holdings) if (h.account === label) set.add(h.symbol.trim().toUpperCase());
+    return set;
+  }, [holdings, accountLabel]);
+  const willUpdate = (symbol: string): boolean => existingSymbols.has(symbol.trim().toUpperCase());
+  const updateCount = rows.reduce((n, r) => n + (willUpdate(r.symbol) ? 1 : 0), 0);
+  const newCount = rows.length - updateCount;
 
   return (
     <div className="card" style={{ marginBottom: 18, borderColor: "var(--gold-dim)" }}>
@@ -123,7 +138,20 @@ export default function CsvImport({
             <span className="text-xs text-muted">
               {rows.length} positions · {fmtUSD(total)}
             </span>
+            {updateCount > 0 && (
+              <span className="text-xs text-muted">
+                · <span className="text-green">{newCount} new</span> ·{" "}
+                <span style={{ color: "var(--gold)" }}>{updateCount} refresh existing</span>
+              </span>
+            )}
           </div>
+
+          {updateCount > 0 && (
+            <p className="disc" style={{ marginTop: 0 }}>
+              Matching positions in <b>{accountLabel.trim()}</b> are refreshed in place (value &amp; cost basis
+              updated, your asset-class choices kept) — re-importing won&apos;t create duplicates.
+            </p>
+          )}
 
           <label className="mb-1 block text-xs text-muted">Save into account</label>
           <input
@@ -149,6 +177,7 @@ export default function CsvImport({
               <thead>
                 <tr>
                   <th>Symbol</th>
+                  <th></th>
                   <th>Name</th>
                   <th>Class (review)</th>
                   <th className="r">Value</th>
@@ -160,6 +189,11 @@ export default function CsvImport({
                   <tr key={i}>
                     <td className="mono">
                       <span className="sym">{r.symbol}</span>
+                    </td>
+                    <td>
+                      <span className={"imptag " + (willUpdate(r.symbol) ? "upd" : "new")}>
+                        {willUpdate(r.symbol) ? "Refresh" : "New"}
+                      </span>
                     </td>
                     <td className="nm2 max-w-[220px] truncate">{r.name}</td>
                     <td>
