@@ -130,11 +130,15 @@ interface Detected {
 
 function detectFormat(rows: string[][]): Detected | null {
   for (let i = 0; i < rows.length; i++) {
-    const cells = new Set(rows[i]!.map(norm));
+    const cellList = rows[i]!.map(norm);
+    const cells = new Set(cellList);
     const has = (...names: string[]) => names.every((nm) => cells.has(nm));
     const hasAny = (...names: string[]) => names.some((nm) => cells.has(nm));
+    // Substring match: Schwab's web "Positions" export wraps headers, e.g.
+    // "Mkt Val (Market Value)" and "Asset Type" instead of "Market Value".
+    const hasLike = (...subs: string[]) => subs.some((sub) => cellList.some((c) => c.includes(sub)));
 
-    if (has("market value") && hasAny("security type", "cost basis")) {
+    if (hasLike("market value") && hasAny("security type", "cost basis", "asset type")) {
       return { format: "schwab", headerIndex: i, header: rows[i]! };
     }
     if (has("account number") && hasAny("current value", "cost basis total")) {
@@ -154,10 +158,20 @@ function columnFinder(header: string[]) {
     const key = norm(h);
     if (!index.has(key)) index.set(key, i);
   });
+  const entries = [...index.entries()];
   return (candidates: string[]): number => {
+    // Exact header match first.
     for (const c of candidates) {
       const idx = index.get(norm(c));
       if (idx != null) return idx;
+    }
+    // Fallback: a header that CONTAINS the candidate — handles Schwab's wrapped
+    // headers like "Mkt Val (Market Value)" or "Qty (Quantity)". Most-specific
+    // candidates are listed first, so they win.
+    for (const c of candidates) {
+      const key = norm(c);
+      const hit = entries.find(([h]) => h.includes(key));
+      if (hit) return hit[1];
     }
     return -1;
   };
@@ -217,8 +231,10 @@ export function parseBrokerCsv(text: string): ParsedImport {
     const symbolRaw = get(row, col.symbol);
     const nameRaw = get(row, col.name);
 
-    // Skip summary / total rows.
-    if (/^(account total|total|totals|grand total|cash & cash investments)$/i.test(symbolRaw)) {
+    // Skip summary / total rows ("Account Total", "Positions Total", "TOTAL").
+    // Note: "Cash & Cash Investments" is NOT skipped here — it's a real cash
+    // position in Schwab's web export and is imported as CASH below.
+    if (/(^|\s)totals?$/i.test(symbolRaw)) {
       skippedSummary++;
       continue;
     }
@@ -240,7 +256,8 @@ export function parseBrokerCsv(text: string): ParsedImport {
       skippedUnparsable++;
       continue;
     }
-    const name = nameRaw || (isCash ? "Cash & money market" : symbolRaw);
+    const cleanName = nameRaw && nameRaw !== "--" ? nameRaw : "";
+    const name = cleanName || (isCash ? "Cash & money market" : symbolRaw);
 
     const quantity = (() => {
       const q = parseNumber(get(row, col.quantity));

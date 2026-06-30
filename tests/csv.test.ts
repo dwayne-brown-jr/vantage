@@ -78,6 +78,43 @@ describe("Schwab positions import", () => {
   });
 });
 
+describe("Schwab web 'Positions' export (wrapped headers)", () => {
+  const result = parseBrokerCsv(fixture("schwab-positions-webexport.csv"));
+
+  it("detects Schwab despite 'Mkt Val (Market Value)' / 'Asset Type' headers", () => {
+    expect(result.format).toBe("schwab");
+    expect(result.accountLabel).toContain("Schwab");
+    expect(result.accountLabel).toContain("Individual");
+  });
+
+  it("imports the positions + cash, skipping the 'Positions Total' row", () => {
+    // AAPL, NVDA, SWPPX, CASH — not "Positions Total".
+    expect(result.holdings).toHaveLength(4);
+    expect(result.holdings.some((h) => /total/i.test(h.symbol))).toBe(false);
+    expect(result.warnings.join(" ")).toMatch(/summary/i);
+  });
+
+  it("resolves value and cost basis from the wrapped/variant columns", () => {
+    const swppx = result.holdings.find((h) => h.symbol === "SWPPX")!;
+    expect(swppx.value).toBeCloseTo(6527.88, 2);
+    expect(swppx.costBasis).toBeCloseTo(3687.92, 2);
+    expect(swppx.assetClass).toBe("us_large");
+
+    const aapl = result.holdings.find((h) => h.symbol === "AAPL")!;
+    expect(aapl.value).toBeCloseTo(281.27, 2);
+    expect(aapl.costBasis).toBeCloseTo(129.47, 2);
+  });
+
+  it("imports 'Cash & Cash Investments' as a CASH position", () => {
+    const cash = result.holdings.find((h) => h.symbol === "CASH")!;
+    expect(cash).toBeDefined();
+    expect(cash.value).toBeCloseTo(263.29, 2);
+    expect(cash.assetClass).toBe("cash");
+    expect(cash.costBasis).toBe(0);
+    expect(cash.name).toBe("Cash & money market"); // not the raw "--"
+  });
+});
+
 describe("Fidelity positions import", () => {
   const result = parseBrokerCsv(fixture("fidelity-positions.csv"));
 
