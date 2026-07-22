@@ -5,16 +5,16 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { fmtPct, fmtUSD } from "@/lib/format";
 
 const PALETTE = [
-  "#CDA434",
-  "#6E8BB0",
-  "#5FA37E",
-  "#D98C5F",
-  "#9C7BB0",
-  "#7A8FA6",
-  "#C75D5D",
-  "#86A6CC",
-  "#B08A3E",
-  "#4A515C",
+  "#e0b544",
+  "#7fa0c8",
+  "#6fb891",
+  "#e89b6c",
+  "#ad8cc2",
+  "#8b9fb6",
+  "#d96b6b",
+  "#9dbadd",
+  "#c9a04d",
+  "#5c6472",
 ];
 
 export interface DonutDatum {
@@ -25,7 +25,7 @@ export interface DonutDatum {
 
 export default function Donut({ title, data }: { title: string; data: DonutDatum[] }) {
   const total = data.reduce((s, d) => s + (d.value || 0), 0) || 1;
-  const ds = data.map((d, i) => ({ ...d, color: d.color ?? PALETTE[i % PALETTE.length] ?? "#4A515C" }));
+  const ds = data.map((d, i) => ({ ...d, color: d.color ?? PALETTE[i % PALETTE.length] ?? "#5c6472" }));
 
   return (
     <div className="card">
