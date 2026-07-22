@@ -9,7 +9,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-opus-4-8";
+const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-fable-5";
+// Fable 5's safety classifiers can decline a request (stop_reason "refusal");
+// the server-side fallback re-runs it on Opus 4.8 in the same call.
+const IS_FABLE = MODEL === "claude-fable-5";
+const FALLBACK_MODEL = "claude-opus-4-8";
 
 const bodySchema = z.object({
   messages: z
@@ -45,23 +49,40 @@ export async function POST(req: Request) {
   const system = `${STRATEGIST_SYSTEM}\n\n${context}`;
 
   const client = new Anthropic();
-  const stream = client.messages.stream({
+  // Fable 5 thinks adaptively by default (the `thinking` param must be omitted).
+  const stream = client.beta.messages.stream({
     model: MODEL,
-    max_tokens: 2048,
+    max_tokens: 8192,
     system,
     // Server-side web search so the strategist can pull current headlines.
     tools: [{ type: "web_search_20260209", name: "web_search" }],
     messages: parsed.data.messages,
+    ...(IS_FABLE
+      ? { betas: ["server-side-fallback-2026-06-01"], fallbacks: [{ model: FALLBACK_MODEL }] }
+      : {}),
   });
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let emittedText = false;
+      let refused = false;
       try {
         for await (const event of stream) {
           if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            emittedText = true;
             controller.enqueue(encoder.encode(event.delta.text));
+          } else if (event.type === "message_delta" && event.delta.stop_reason === "refusal") {
+            refused = true;
           }
+        }
+        // The whole model chain declined (rare; the fallback usually answers).
+        if (refused && !emittedText) {
+          controller.enqueue(
+            encoder.encode(
+              "I can't help with that particular request. Try rephrasing, or ask about your portfolio, allocations, or holdings.",
+            ),
+          );
         }
       } catch {
         controller.enqueue(encoder.encode("\n\n[Something went wrong reaching the model. Please try again.]"));

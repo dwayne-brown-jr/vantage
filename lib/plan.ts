@@ -120,9 +120,16 @@ export function enrichPlan(input: PlanInput, holdings: Holding[]): Plan {
   };
 }
 
-/** JSON Schema for the `emit_plan` tool the model is forced to call. */
-export const PLAN_TOOL_SCHEMA = {
+/**
+ * JSON Schema for the plan, enforced via structured outputs
+ * (`output_config.format`) — the API guarantees the response parses and
+ * validates against this shape, so no retry-on-malformed logic is needed.
+ * Every object must set `additionalProperties: false` per the API's rules.
+ */
+export const PLAN_OUTPUT_SCHEMA = {
   type: "object" as const,
+  additionalProperties: false,
+  required: ["summary", "sells", "reinvests", "cautions"],
   properties: {
     summary: { type: "string", description: "One-line bottom line — the plan in a sentence." },
     sells: {
@@ -130,13 +137,14 @@ export const PLAN_TOOL_SCHEMA = {
       description: "Positions to sell, one row per account+symbol.",
       items: {
         type: "object",
+        additionalProperties: false,
+        required: ["account", "symbol", "amount", "reason"],
         properties: {
           account: { type: "string", description: "Exact account name from the ledger." },
           symbol: { type: "string", description: "Ticker/symbol to sell." },
           amount: { type: "number", description: "Dollars to sell (integer)." },
           reason: { type: "string", description: "Short why — tax treatment, concentration, overweight." },
         },
-        required: ["account", "symbol", "amount", "reason"],
       },
     },
     reinvests: {
@@ -144,6 +152,8 @@ export const PLAN_TOOL_SCHEMA = {
       description: "Where the freed cash goes, one row per account+fund.",
       items: {
         type: "object",
+        additionalProperties: false,
+        required: ["account", "symbol", "name", "amount", "reason"],
         properties: {
           account: { type: "string", description: "Destination account name." },
           symbol: { type: "string", description: "Ticker/fund to buy." },
@@ -151,7 +161,6 @@ export const PLAN_TOOL_SCHEMA = {
           amount: { type: "number", description: "Dollars to buy (integer)." },
           reason: { type: "string", description: "Short why — which gap it closes, tax efficiency." },
         },
-        required: ["account", "symbol", "name", "amount", "reason"],
       },
     },
     cautions: {
@@ -160,5 +169,4 @@ export const PLAN_TOOL_SCHEMA = {
       items: { type: "string" },
     },
   },
-  required: ["summary", "sells", "reinvests", "cautions"],
 };

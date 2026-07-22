@@ -5,7 +5,10 @@ import { z } from "zod";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-sonnet-4-6";
+// Chart insights are latency-sensitive UI — run Sonnet 5 fast (no thinking,
+// low effort) and give it its own override so tuning the strategist model
+// doesn't accidentally change this route.
+const MODEL = process.env.VANTAGE_CHART_MODEL ?? "claude-sonnet-5";
 
 const bodySchema = z.object({
   symbol: z.string().min(1).max(12),
@@ -57,6 +60,10 @@ export async function POST(req: Request) {
     const msg = await client.messages.create({
       model: MODEL,
       max_tokens: 500,
+      // Sonnet 5 runs adaptive thinking by default — disable it here; a 2–4
+      // sentence read over precomputed levels needs speed, not deliberation.
+      thinking: { type: "disabled" },
+      output_config: { effort: "low" },
       system: SYSTEM,
       messages: [{ role: "user", content: `${context}\n\nGive the buy-zone read for ${symbol}.` }],
     });
