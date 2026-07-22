@@ -13,16 +13,16 @@ export interface AssetClassMeta {
  * than dropped whole into its bucket.
  */
 export const ASSET_CLASSES: Record<AssetClassKey, AssetClassMeta> = {
-  us_large: { label: "US large-cap index", color: "#CDA434", bucket: "US equity" },
-  us_total: { label: "US total market", color: "#B08A3E", bucket: "US equity" },
-  us_stock: { label: "US single stocks", color: "#C75D5D", bucket: "US equity" },
-  intl_dev: { label: "International developed", color: "#6E8BB0", bucket: "International" },
-  intl_em: { label: "Emerging markets", color: "#86A6CC", bucket: "International" },
-  div_value: { label: "Dividend / value", color: "#5FA37E", bucket: "US equity" },
-  sector: { label: "Sector bets", color: "#9C7BB0", bucket: "US equity" },
-  spec: { label: "Speculative", color: "#D98C5F", bucket: "US equity" },
-  tdf: { label: "Target-date blend", color: "#7A8FA6", bucket: "Blend" },
-  cash: { label: "Cash", color: "#4A515C", bucket: "Cash" },
+  us_large: { label: "US large-cap index", color: "#e0b544", bucket: "US equity" },
+  us_total: { label: "US total market", color: "#c9a04d", bucket: "US equity" },
+  us_stock: { label: "US single stocks", color: "#d96b6b", bucket: "US equity" },
+  intl_dev: { label: "International developed", color: "#7fa0c8", bucket: "International" },
+  intl_em: { label: "Emerging markets", color: "#9dbadd", bucket: "International" },
+  div_value: { label: "Dividend / value", color: "#6fb891", bucket: "US equity" },
+  sector: { label: "Sector bets", color: "#ad8cc2", bucket: "US equity" },
+  spec: { label: "Speculative", color: "#e89b6c", bucket: "US equity" },
+  tdf: { label: "Target-date blend", color: "#8b9fb6", bucket: "Blend" },
+  cash: { label: "Cash", color: "#5c6472", bucket: "Cash" },
 };
 
 export const ASSET_CLASS_KEYS = Object.keys(ASSET_CLASSES) as AssetClassKey[];
@@ -43,8 +43,8 @@ export const DEFAULT_TARGETS: Record<string, number> = {
 
 /** Bucket display colors, kept alongside the taxonomy for chart parity. */
 export const BUCKET_COLORS = {
-  "US equity": "#CDA434",
-  International: "#6E8BB0",
-  Bonds: "#7A8FA6",
-  Cash: "#4A515C",
+  "US equity": "#e0b544",
+  International: "#7fa0c8",
+  Bonds: "#8b9fb6",
+  Cash: "#5c6472",
 } as const;

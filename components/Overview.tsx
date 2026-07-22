@@ -11,25 +11,25 @@ import { fmtPct, fmtUSD } from "@/lib/format";
 
 const tooltipProps = {
   contentStyle: {
-    background: "#1B2029",
-    border: "1px solid #262C36",
+    background: "#272e3a",
+    border: "1px solid #38414f",
     borderRadius: 8,
     fontFamily: "var(--font-mono)",
     fontSize: 12,
   },
-  itemStyle: { color: "#E7E3DA" },
-  labelStyle: { color: "#8A8F99" },
+  itemStyle: { color: "#f0ece3" },
+  labelStyle: { color: "#a0a7b3" },
   cursor: { fill: "rgba(255,255,255,0.04)" },
 } as const;
 
 const xAxisProps = {
-  tick: { fill: "#8A8F99", fontSize: 10 },
-  axisLine: { stroke: "#262C36" },
+  tick: { fill: "#a0a7b3", fontSize: 10 },
+  axisLine: { stroke: "#38414f" },
   tickLine: false,
 } as const;
 
 const yAxisProps = {
-  tick: { fill: "#5A616C", fontSize: 10 },
+  tick: { fill: "#6f7784", fontSize: 10 },
   axisLine: false,
   tickLine: false,
   width: 42,
@@ -46,7 +46,7 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
 
   if (a.tsla && a.tsla.pct > COMFORT_CEILING) {
     items.push({
-      color: "#C75D5D",
+      color: "#d96b6b",
       title: "Tesla concentration stacked on Tesla income",
       desc: `Single-name exposure of ${fmtPct(a.tsla.pct)} sits far above the ~${COMFORT_CEILING}% comfort line, compounded by salary, benefits, and vesting RSUs all riding on one company.`,
     });
@@ -56,7 +56,7 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
   for (const s of a.singles) {
     if (s.symbol !== "TSLA" && s.pct > COMFORT_CEILING) {
       items.push({
-        color: "#D98C5F",
+        color: "#e89b6c",
         title: `${s.symbol} is also above the comfort line at ${fmtPct(s.pct)}`,
         desc: `A second concentrated single-name position worth ${fmtUSD(s.value)}.`,
       });
@@ -65,7 +65,7 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
 
   if (a.intlPct < 15) {
     items.push({
-      color: "#D98C5F",
+      color: "#e89b6c",
       title: `International is thin at ${fmtPct(a.intlPct)}`,
       desc: "Most of your international comes from the 2060 target-date fund. Growing it — best in the tax-free Roth — is the cleanest fix.",
     });
@@ -73,7 +73,7 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
 
   if (a.specTotal > 0) {
     items.push({
-      color: "#7A8FA6",
+      color: "#8b9fb6",
       title: `${fmtUSD(a.specTotal)} in speculative satellites`,
       desc: "Holdings tagged speculative add cost and volatility without diversifying — candidates to clear.",
     });
@@ -116,8 +116,8 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
                 {...tooltipProps}
                 formatter={(v, n) => [fmtUSD(Number(v)), n === "costBasis" ? "Invested" : "Value"]}
               />
-              <Bar dataKey="costBasis" name="costBasis" fill="#7A8FA6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
-              <Bar dataKey="value" name="value" fill="#CDA434" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="costBasis" name="costBasis" fill="#8b9fb6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              <Bar dataKey="value" name="value" fill="#e0b544" radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -131,7 +131,7 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
               <Tooltip {...tooltipProps} formatter={(v) => [fmtUSD(Number(v)), "Unrealized"]} />
               <Bar dataKey="unrealized" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                 {top.map((s, i) => (
-                  <Cell key={i} fill={s.unrealized >= 0 ? "#5FA37E" : "#C75D5D"} />
+                  <Cell key={i} fill={s.unrealized >= 0 ? "#6fb891" : "#d96b6b"} />
                 ))}
               </Bar>
             </BarChart>
@@ -147,7 +147,7 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
               <Tooltip {...tooltipProps} formatter={(v) => [fmtPct(Number(v)), "ROI"]} />
               <Bar dataKey="roi" radius={[3, 3, 0, 0]} isAnimationActive={false}>
                 {top.map((s, i) => (
-                  <Cell key={i} fill={s.roi >= 0 ? "#CDA434" : "#C75D5D"} />
+                  <Cell key={i} fill={s.roi >= 0 ? "#e0b544" : "#d96b6b"} />
                 ))}
               </Bar>
             </BarChart>

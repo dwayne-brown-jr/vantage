@@ -14,17 +14,17 @@ import type { Snapshot } from "@/lib/snapshots";
 
 const tooltipProps = {
   contentStyle: {
-    background: "#1B2029",
-    border: "1px solid #262C36",
+    background: "#272e3a",
+    border: "1px solid #38414f",
     borderRadius: 8,
     fontFamily: "var(--font-mono)",
     fontSize: 12,
   },
-  itemStyle: { color: "#E7E3DA" },
-  labelStyle: { color: "#8A8F99" },
+  itemStyle: { color: "#f0ece3" },
+  labelStyle: { color: "#a0a7b3" },
 } as const;
-const xAxisProps = { tick: { fill: "#8A8F99", fontSize: 10 }, axisLine: { stroke: "#262C36" }, tickLine: false } as const;
-const yAxisProps = { tick: { fill: "#5A616C", fontSize: 10 }, axisLine: false, tickLine: false, width: 44 } as const;
+const xAxisProps = { tick: { fill: "#a0a7b3", fontSize: 10 }, axisLine: { stroke: "#38414f" }, tickLine: false } as const;
+const yAxisProps = { tick: { fill: "#6f7784", fontSize: 10 }, axisLine: false, tickLine: false, width: 44 } as const;
 
 const fmtDay = (day: string): string => {
   const [, m, d] = day.split("-");
@@ -126,11 +126,11 @@ export default function History({ a }: { a: PortfolioAnalysis }) {
                       <Tooltip {...tooltipProps} formatter={(v) => [fmtPct(Number(v)), "TSLA"]} />
                       <ReferenceLine
                         y={COMFORT_CEILING}
-                        stroke="#CDA434"
+                        stroke="#e0b544"
                         strokeDasharray="4 4"
-                        label={{ value: `ceiling ${COMFORT_CEILING}%`, fill: "#CDA434", fontSize: 10, position: "insideTopRight" }}
+                        label={{ value: `ceiling ${COMFORT_CEILING}%`, fill: "#e0b544", fontSize: 10, position: "insideTopRight" }}
                       />
-                      <Line type="monotone" dataKey="tslaPct" stroke="#C75D5D" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="tslaPct" stroke="#d96b6b" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -145,7 +145,7 @@ export default function History({ a }: { a: PortfolioAnalysis }) {
                         domain={["auto", "auto"]}
                       />
                       <Tooltip {...tooltipProps} formatter={(v) => [fmtUSD(Number(v)), "Value"]} />
-                      <Line type="monotone" dataKey="total" stroke="#CDA434" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="total" stroke="#e0b544" strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>

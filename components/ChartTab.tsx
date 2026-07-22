@@ -69,20 +69,20 @@ export default function ChartTab({ symbols }: { symbols: { symbol: string; name:
         height: 380,
         layout: {
           background: { type: LWC.ColorType.Solid, color: "transparent" },
-          textColor: "#8A8F99",
+          textColor: "#a0a7b3",
           fontFamily: "'IBM Plex Mono', monospace",
         },
-        grid: { vertLines: { color: "rgba(38,44,54,0.55)" }, horzLines: { color: "rgba(38,44,54,0.55)" } },
-        rightPriceScale: { borderColor: "#262C36" },
-        timeScale: { borderColor: "#262C36", timeVisible: false },
+        grid: { vertLines: { color: "rgba(56,65,79,0.55)" }, horzLines: { color: "rgba(56,65,79,0.55)" } },
+        rightPriceScale: { borderColor: "#38414f" },
+        timeScale: { borderColor: "#38414f", timeVisible: false },
         crosshair: { mode: LWC.CrosshairMode.Normal },
       });
 
       const candle = chart.addSeries(LWC.CandlestickSeries, {
-        upColor: "#5FA37E",
-        downColor: "#C75D5D",
-        wickUpColor: "#5FA37E",
-        wickDownColor: "#C75D5D",
+        upColor: "#6fb891",
+        downColor: "#d96b6b",
+        wickUpColor: "#6fb891",
+        wickDownColor: "#d96b6b",
         borderVisible: false,
       });
       candle.setData(
@@ -95,25 +95,25 @@ export default function ChartTab({ symbols }: { symbols: { symbol: string; name:
         data.candles.map((c) => ({
           time: c.time as UTCTimestamp,
           value: c.volume,
-          color: c.close >= c.open ? "rgba(95,163,126,0.35)" : "rgba(199,93,93,0.35)",
+          color: c.close >= c.open ? "rgba(111,184,145,0.35)" : "rgba(217,107,107,0.35)",
         })),
       );
 
       const sma50 = smaSeries(data.candles, 50);
       if (sma50.length) {
-        const s = chart.addSeries(LWC.LineSeries, { color: "#CDA434", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+        const s = chart.addSeries(LWC.LineSeries, { color: "#e0b544", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
         s.setData(sma50);
       }
       const sma200 = smaSeries(data.candles, 200);
       if (sma200.length) {
-        const s = chart.addSeries(LWC.LineSeries, { color: "#6E8BB0", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+        const s = chart.addSeries(LWC.LineSeries, { color: "#7fa0c8", lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
         s.setData(sma200);
       }
 
       const t = data.technicals;
       if (t) {
-        candle.createPriceLine({ price: t.buyZone[1], color: "#5FA37E", lineWidth: 1, lineStyle: LWC.LineStyle.Dashed, title: "buy zone" });
-        candle.createPriceLine({ price: t.buyZone[0], color: "#5FA37E", lineWidth: 1, lineStyle: LWC.LineStyle.Dashed, axisLabelVisible: true });
+        candle.createPriceLine({ price: t.buyZone[1], color: "#6fb891", lineWidth: 1, lineStyle: LWC.LineStyle.Dashed, title: "buy zone" });
+        candle.createPriceLine({ price: t.buyZone[0], color: "#6fb891", lineWidth: 1, lineStyle: LWC.LineStyle.Dashed, axisLabelVisible: true });
       }
 
       // Size to the container and show ALL bars. Using an explicit logical
