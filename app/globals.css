@@ -129,15 +129,18 @@ body {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 24px;
   background: var(--surface);
   padding: 4px;
   border-radius: 10px;
   border: 1px solid var(--line);
+  /* fit-content still hugs the tabs on wide screens, but resolves to the
+     available width when they no longer fit — so flex-wrap can break them
+     onto a second row instead of scrolling a tab off-screen. */
   width: fit-content;
   max-width: 100%;
-  overflow-x: auto;
 }
 .nav button {
   font-family: inherit;
@@ -160,6 +163,15 @@ body {
   background: var(--surface2);
   color: var(--txt);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+@media (max-width: 560px) {
+  .nav {
+    gap: 2px;
+  }
+  .nav button {
+    padding: 9px 11px;
+    letter-spacing: 0.2px;
+  }
 }
 
 .card {
