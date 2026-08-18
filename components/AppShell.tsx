@@ -25,7 +25,7 @@ const TABS: [Tab, string][] = [
   ["chart", "Chart"],
   ["plan", "Plan"],
   ["history", "History"],
-  ["strategist", "AI Strategist"],
+  ["strategist", "Strategist"],
 ];
 
 export default function AppShell({
