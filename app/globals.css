@@ -56,6 +56,26 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * The page itself must never scroll sideways. Genuinely wide content (the
+ * desktop holdings tables) scrolls inside its own .overflow-x-auto container,
+ * so nothing here needs a document-level horizontal scrollbar — and on a phone
+ * one silently pushes half the UI off-screen. `clip` rather than `hidden`: it
+ * blocks scrolling without creating a scroll container, so it can't break
+ * position: sticky or trap focus scrolling.
+ */
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+@supports not (overflow: clip) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+}
+
 /* Tabular monospace numerals — used for every figure. */
 .mono {
   font-family: var(--font-mono);
@@ -171,6 +191,12 @@ body {
   .nav button {
     padding: 9px 11px;
     letter-spacing: 0.2px;
+  }
+  /* fit-content grows toward max-content whenever the containing block is
+     wider than the visible area, which pushes the last tab off-screen. A plain
+     100% can only ever be as wide as the shell. */
+  .nav {
+    width: 100%;
   }
   /* Reclaim vertical space on a phone: the tagline wraps to two lines and
      carries no information, and the shell can afford tighter padding. Real
@@ -1712,18 +1738,24 @@ body {
   width: 100%;
 }
 .vt .hact .btn-ghost {
-  flex: 1;
+  /* basis auto (not 0) so the row can WRAP when the three labels don't fit;
+     with basis 0 they'd stay on one line and overflow instead. min-width 0
+     lets a button shrink below its label rather than push the card wider. */
+  flex: 1 1 auto;
+  min-width: 0;
   justify-content: center;
   gap: 5px;
   font-size: 12px;
   padding: 8px 6px;
   white-space: nowrap;
+  overflow: hidden;
 }
 .vt .acctbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 10px 0 4px;
   font-size: 12px;
   color: var(--muted);
@@ -1784,7 +1816,10 @@ body {
   flex-direction: column;
   align-items: flex-end;
   margin-left: auto;
-  flex: none;
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  padding-left: 8px;
 }
 .vt .acctmeta .mono {
   color: var(--txt);
