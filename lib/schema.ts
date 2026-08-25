@@ -20,7 +20,14 @@ export const holdingInputSchema = z.object({
   updatedAt: z.string().nullable().optional(),
 });
 
-export const holdingPatchSchema = holdingInputSchema.partial();
+/**
+ * Partial update. `name` is re-declared without its `.default("")`: zod keeps
+ * defaults through `.partial()`, so an absent name would be filled in as "" and
+ * silently wipe the stored name on every value-only patch.
+ */
+export const holdingPatchSchema = holdingInputSchema.partial().extend({
+  name: z.string().optional(),
+});
 
 export const importSchema = z.object({
   holdings: z.array(holdingInputSchema).min(1, "nothing to import").max(2000),

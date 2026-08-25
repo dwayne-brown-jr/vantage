@@ -1094,6 +1094,250 @@ body {
   border-color: var(--gold-dim);
 }
 
+/* Ledger reconciliation — proposed corrections from an attachment */
+.vt .rec {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vt .rec-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.vt .rec-allbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.vt .rec-allbtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.vt .rec-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface2);
+  padding: 12px 14px;
+}
+.vt .rec-card.risky {
+  border-color: var(--orange);
+}
+.vt .rec-card.applied {
+  opacity: 0.65;
+  border-color: var(--green);
+}
+.vt .rec-card.dismissed {
+  opacity: 0.45;
+}
+.vt .rec-card.failed {
+  border-color: var(--red);
+}
+.vt .rec-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 9px;
+}
+.vt .rec-sym {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--txt);
+}
+.vt .rec-acct {
+  font-size: 12px;
+  color: var(--faint);
+  margin-left: auto;
+}
+.vt .rec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.vt .rec-badge.add {
+  color: var(--green);
+  border-color: var(--green);
+}
+.vt .rec-badge.conf-high {
+  color: var(--green);
+  border-color: var(--green);
+}
+.vt .rec-badge.conf-medium {
+  color: var(--gold);
+  border-color: var(--gold-dim);
+}
+.vt .rec-badge.conf-low {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+.vt .rec-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.vt .rec-chg {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.vt .rec-lbl {
+  color: var(--faint);
+  font-size: 11.5px;
+  min-width: 72px;
+}
+.vt .rec-from {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.vt .rec-arrow {
+  color: var(--faint);
+}
+.vt .rec-to {
+  color: var(--txt);
+  font-weight: 600;
+}
+.vt .rec-delta {
+  font-size: 11.5px;
+}
+.vt .rec-delta.pos {
+  color: var(--green);
+}
+.vt .rec-delta.neg {
+  color: var(--red);
+}
+.vt .rec-obs,
+.vt .rec-why {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+.vt .rec-obs .mono {
+  color: var(--slate);
+}
+.vt .rec-warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--orange);
+  margin-top: 7px;
+}
+.vt .rec-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 11px;
+}
+.vt .rec-apply,
+.vt .rec-dismiss {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12.5px;
+  padding: 6px 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+}
+.vt .rec-apply {
+  background: var(--gold);
+  color: #1a160a;
+  border-color: var(--gold);
+  font-weight: 600;
+}
+.vt .rec-dismiss {
+  background: transparent;
+  color: var(--muted);
+}
+.vt .rec-dismiss:hover:not(:disabled) {
+  color: var(--txt);
+}
+.vt .rec-apply:disabled,
+.vt .rec-dismiss:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.vt .rec-state {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  margin-top: 11px;
+}
+.vt .rec-state.applied {
+  color: var(--green);
+}
+.vt .rec-state.dismissed {
+  color: var(--faint);
+}
+.vt .rec-state.failed {
+  color: var(--red);
+}
+.vt .rec-ask {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px dashed var(--gold-dim);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--gold);
+}
+.vt .rec-ask-t {
+  font-size: 13px;
+  color: var(--txt);
+}
+.vt .rec-ask-d {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.vt .rec-ask-btn {
+  margin-left: auto;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  padding: 6px 13px;
+  cursor: pointer;
+}
+.vt .rec-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--green);
+}
+.vt .rec-note,
+.vt .rec-rejnote {
+  font-size: 12px;
+  color: var(--faint);
+}
+
 /* Build-my-plan action bar */
 .vt .planbar {
   display: flex;

@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { ClipboardList, FileText, Paperclip, RefreshCw, Send, Sparkles, X } from "lucide-react";
+import { ClipboardList, FileText, Paperclip, RefreshCw, ScanLine, Send, Sparkles, X } from "lucide-react";
 
+import ReconcileCards from "@/components/ReconcileCards";
 import type { PortfolioAnalysis } from "@/lib/analytics";
+import { reconcileAttachments } from "@/lib/api";
 import type { Plan } from "@/lib/plan";
+import type { Reconciliation, ReconcileProposal } from "@/lib/reconcile";
 import {
   attachmentDataUrl,
   fileToAttachment,
@@ -23,6 +26,8 @@ interface ChatMessage {
   text: string;
   /** When present, this assistant turn renders as structured plan cards. */
   plan?: Plan;
+  /** When present, this assistant turn renders as ledger-correction cards. */
+  reconciliation?: Reconciliation;
   /** Screenshots / PDFs the owner attached to this (user) turn. */
   attachments?: Attachment[];
 }
@@ -75,7 +80,13 @@ function buildContent(text: string, attachments: Attachment[]): ReqContent {
  */
 function toApiMessage(m: ChatMessage): ReqMessage {
   if (m.role === "assistant") {
-    const text = m.text.trim() || (m.plan ? "(Provided a structured sell & reinvest plan.)" : "(no response)");
+    const text =
+      m.text.trim() ||
+      (m.plan
+        ? "(Provided a structured sell & reinvest plan.)"
+        : m.reconciliation
+          ? "(Proposed ledger corrections from the attachment.)"
+          : "(no response)");
     return { role: "assistant", content: text };
   }
   return { role: "user", content: buildContent(m.text, m.attachments ?? []) };
@@ -108,7 +119,14 @@ function AttachmentRow({ attachments }: { attachments: Attachment[] }) {
   );
 }
 
-export default function Strategist({ a }: { a: PortfolioAnalysis }) {
+export default function Strategist({
+  a,
+  onApplyReconcile,
+}: {
+  a: PortfolioAnalysis;
+  /** Applies one approved ledger correction; false if the write failed. */
+  onApplyReconcile?: (p: ReconcileProposal) => Promise<boolean>;
+}) {
   const greeting = `I've got your full picture — ${fmtUSD(a.total)} across ${a.byAccount.length} accounts, with Tesla at ${
     a.tsla ? fmtPct(a.tsla.pct) : "0%"
   }. Ask me anything: where new money should go, what's overlapping, your riskiest holdings, or what's moving your positions today. You can also attach a screenshot or statement for me to read.`;
@@ -120,6 +138,8 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
   const [pending, setPending] = useState<Attachment[]>([]);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  /** Attachments from the most recent user turn — reused for reconciliation. */
+  const [lastSent, setLastSent] = useState<Attachment[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -189,6 +209,7 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
       text: question,
       attachments: atts.length ? atts : undefined,
     };
+    if (atts.length) setLastSent(atts);
 
     // Conversation for the API: drop the display-only greeting (first message),
     // then append the new user turn. First API message must be a user turn.
@@ -226,6 +247,35 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
       ]);
     } finally {
       setStreaming("");
+      setBusy(false);
+    }
+  }
+
+  /**
+   * Re-read the last attachment against the ledger and propose corrections.
+   * Runs only on request — it costs a model call, and it writes nothing: every
+   * proposed change waits for approval on its card.
+   */
+  async function runReconcile(atts: Attachment[]) {
+    if (busy || atts.length === 0) return;
+    setBusy(true);
+    setStreaming("");
+    setMessages((m) => [...m, { role: "user", text: "Check this against my ledger." }]);
+
+    try {
+      const blocks = atts.map((att) =>
+        att.kind === "pdf"
+          ? { type: "document", source: { type: "base64", media_type: att.mediaType, data: att.data } }
+          : { type: "image", source: { type: "base64", media_type: att.mediaType, data: att.data } },
+      );
+      const reconciliation = await reconcileAttachments(blocks);
+      setMessages((m) => [...m, { role: "assistant", text: "", reconciliation }]);
+    } catch (e) {
+      setMessages((m) => [
+        ...m,
+        { role: "assistant", text: e instanceof Error ? e.message : "Couldn't read that attachment." },
+      ]);
+    } finally {
       setBusy(false);
     }
   }
@@ -296,6 +346,12 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
                 </>
               ) : m.plan ? (
                 <PlanCards plan={m.plan} />
+              ) : m.reconciliation ? (
+                <ReconcileCards
+                  data={m.reconciliation}
+                  onApply={onApplyReconcile ?? (async () => false)}
+                  onRequestUpload={() => fileRef.current?.click()}
+                />
               ) : (
                 <Markdown source={m.text} />
               )}
@@ -337,6 +393,20 @@ export default function Strategist({ a }: { a: PortfolioAnalysis }) {
         </button>
         <span className="planbar-hint">structured cards with per-account tax</span>
       </div>
+
+      {(pending.length > 0 || lastSent.length > 0) && (
+        <div className="planbar">
+          <button
+            type="button"
+            className="planbtn ghost"
+            onClick={() => void runReconcile(pending.length > 0 ? pending : lastSent)}
+            disabled={busy}
+          >
+            <ScanLine size={15} /> Check {pending.length > 0 ? "this" : "that"} against my ledger
+          </button>
+          <span className="planbar-hint">proposes corrections — you approve each</span>
+        </div>
+      )}
 
       {pending.length > 0 && (
         <div className="pending">

@@ -14,6 +14,7 @@ import { useToast } from "@/components/Toast";
 import { createHolding, deleteHolding, refreshPrices, updateHolding } from "@/lib/api";
 import { analyze } from "@/lib/analytics";
 import { fmtUSD } from "@/lib/format";
+import { proposalPatch, type ReconcileProposal } from "@/lib/reconcile";
 import type { Holding, HoldingInput } from "@/lib/types";
 
 type Tab = "overview" | "holdings" | "chart" | "plan" | "history" | "strategist";
@@ -117,6 +118,62 @@ export default function AppShell({
       setHoldings((hs) => [...hs, created]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add position.");
+    }
+  }
+
+  /**
+   * Apply one owner-approved ledger correction from a reconciled attachment.
+   * Returns false if the write failed so the card can show it, and offers Undo
+   * back to the exact prior figures — nothing here is silent.
+   */
+  async function onApplyReconcile(p: ReconcileProposal): Promise<boolean> {
+    const patch = proposalPatch(p);
+    try {
+      if (p.holdingId) {
+        const before = holdings.find((h) => h.id === p.holdingId);
+        const saved = await updateHolding(p.holdingId, { ...patch, source: "reconciled" });
+        setHoldings((hs) => hs.map((h) => (h.id === saved.id ? saved : h)));
+        toast({
+          message: `${p.symbol} updated`,
+          action: before
+            ? {
+                label: "Undo",
+                onClick: () => {
+                  void (async () => {
+                    const reverted = await updateHolding(before.id, {
+                      value: before.value,
+                      costBasis: before.costBasis,
+                      quantity: before.quantity ?? null,
+                      source: before.source ?? "manual",
+                    });
+                    setHoldings((hs) => hs.map((h) => (h.id === reverted.id ? reverted : h)));
+                  })();
+                },
+              }
+            : undefined,
+        });
+      } else {
+        const created = await createHolding({
+          account: p.account,
+          symbol: p.symbol,
+          name: p.name,
+          value: patch.value ?? 0,
+          costBasis: patch.costBasis ?? 0,
+          assetClass: p.assetClass,
+          quantity: patch.quantity ?? null,
+          source: "reconciled",
+        });
+        setHoldings((hs) => [...hs, created]);
+        toast({
+          message: `${p.symbol} added`,
+          action: { label: "Undo", onClick: () => void onDelete(created.id) },
+        });
+      }
+      return true;
+    } catch (e) {
+      toast({ message: `Couldn't update ${p.symbol}`, tone: "error" });
+      setError(e instanceof Error ? e.message : "Failed to apply the change.");
+      return false;
     }
   }
 
@@ -225,7 +282,7 @@ export default function AppShell({
       {tab === "chart" && <ChartTab symbols={a.symbols.map((s) => ({ symbol: s.symbol, name: s.name }))} />}
       {tab === "plan" && <Plan a={a} holdings={holdings} />}
       {tab === "history" && <History a={a} />}
-      {tab === "strategist" && <Strategist a={a} />}
+      {tab === "strategist" && <Strategist a={a} onApplyReconcile={onApplyReconcile} />}
     </div>
   );
 }

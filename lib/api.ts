@@ -1,4 +1,5 @@
 import type { Candle } from "@/lib/datasource";
+import type { Reconciliation } from "@/lib/reconcile";
 import type { Snapshot } from "@/lib/snapshots";
 import type { Technicals } from "@/lib/technicals";
 import type { Holding, HoldingInput } from "@/lib/types";
@@ -95,4 +96,20 @@ export async function fetchChartInsight(payload: { symbol: string; name?: string
     await fetch("/api/chart-insight", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(payload) }),
   );
   return data.text;
+}
+
+/** Read an attached screenshot/statement and propose ledger corrections. */
+export async function reconcileAttachments(
+  attachments: unknown[],
+  instruction?: string,
+): Promise<Reconciliation> {
+  const data = await unwrap<{ reconciliation?: Reconciliation; error?: string }>(
+    await fetch("/api/strategist/reconcile", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ attachments, instruction }),
+    }),
+  );
+  if (data.error || !data.reconciliation) throw new Error(data.error ?? "Couldn't read that attachment.");
+  return data.reconciliation;
 }
