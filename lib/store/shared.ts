@@ -12,6 +12,7 @@ export function materialize(input: HoldingInput): Holding {
     assetClass: input.assetClass,
     quantity: input.quantity ?? null,
     price: input.price ?? null,
+    unvested: input.unvested ?? null,
     source: input.source ?? "manual",
     updatedAt: new Date().toISOString(),
   };
@@ -51,6 +52,8 @@ export function mergeImport(existing: Holding[], inputs: HoldingInput[]): MergeI
         costBasis: input.costBasis,
         quantity: input.quantity ?? prev.quantity ?? null,
         price: input.price ?? prev.price ?? null,
+        // An import never knows about unvested comp, so keep what we have.
+        unvested: input.unvested ?? prev.unvested ?? null,
         source: input.source ?? prev.source ?? null,
         updatedAt: new Date().toISOString(),
       };

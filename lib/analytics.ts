@@ -93,6 +93,23 @@ export interface PortfolioAnalysis {
 
   /** Total market value of speculative satellites. */
   specTotal: number;
+
+  /**
+   * Unvested equity comp across all holdings. NOT included in `total` or in
+   * any percentage — it isn't owned yet. Surfaced so the exposure it creates
+   * stays visible.
+   */
+  unvestedTotal: number;
+  /** Unvested value attached to TSLA specifically. */
+  tslaUnvested: number;
+  /**
+   * Tesla exposure counting unvested RSUs, as a percentage of the portfolio
+   * plus that unvested value. This is the honest concentration figure for
+   * someone whose employer is also their largest position: the vested
+   * percentage alone understates how much of their financial future rides on
+   * one company.
+   */
+  tslaExposurePct: number;
 }
 
 /* ── core ────────────────────────────────────────────────────────────────── */
@@ -199,6 +216,14 @@ export function analyze(holdings: Holding[]): PortfolioAnalysis {
 
   const specTotal = holdings.filter((h) => h.assetClass === "spec").reduce((s, h) => s + num(h.value), 0);
 
+  // Unvested equity comp — tracked alongside, never added into `total`.
+  const unvestedTotal = holdings.reduce((s, h) => s + num(h.unvested), 0);
+  const tslaUnvested = holdings
+    .filter((h) => h.symbol.toUpperCase() === "TSLA")
+    .reduce((s, h) => s + num(h.unvested), 0);
+  const exposureBase = total + tslaUnvested;
+  const tslaExposurePct = pctOf((tsla?.value ?? 0) + tslaUnvested, exposureBase);
+
   return {
     total,
     byClass,
@@ -224,6 +249,9 @@ export function analyze(holdings: Holding[]): PortfolioAnalysis {
     gain,
     basis,
     specTotal,
+    unvestedTotal,
+    tslaUnvested,
+    tslaExposurePct,
   };
 }
 

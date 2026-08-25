@@ -22,6 +22,7 @@ interface HoldingRow {
   price: number | null;
   source: string | null;
   updated_at: string | null;
+  unvested: number | null;
 }
 
 function rowToHolding(row: HoldingRow): Holding {
@@ -35,6 +36,7 @@ function rowToHolding(row: HoldingRow): Holding {
     assetClass: row.asset_class as Holding["assetClass"],
     quantity: row.quantity,
     price: row.price,
+    unvested: row.unvested,
     source: row.source,
     updatedAt: row.updated_at,
   };
@@ -51,13 +53,14 @@ function holdingToRow(h: Holding): HoldingRow {
     asset_class: h.assetClass,
     quantity: h.quantity ?? null,
     price: h.price ?? null,
+    unvested: h.unvested ?? null,
     source: h.source ?? null,
     updated_at: h.updatedAt ?? null,
   };
 }
 
-const COLUMNS = "id, account, symbol, name, value, cost_basis, asset_class, quantity, price, source, updated_at";
-const VALUES = "@id, @account, @symbol, @name, @value, @cost_basis, @asset_class, @quantity, @price, @source, @updated_at";
+const COLUMNS = "id, account, symbol, name, value, cost_basis, asset_class, quantity, price, source, updated_at, unvested";
+const VALUES = "@id, @account, @symbol, @name, @value, @cost_basis, @asset_class, @quantity, @price, @source, @updated_at, @unvested";
 
 function getRow(id: string): Holding | null {
   const row = getDb().prepare(`SELECT ${COLUMNS} FROM holdings WHERE id = ?`).get(id) as HoldingRow | undefined;
@@ -85,7 +88,7 @@ export const sqliteStore: HoldingStore = {
         `UPDATE holdings SET
            account=@account, symbol=@symbol, name=@name, value=@value,
            cost_basis=@cost_basis, asset_class=@asset_class, quantity=@quantity,
-           price=@price, source=@source, updated_at=@updated_at
+           price=@price, source=@source, updated_at=@updated_at, unvested=@unvested
          WHERE id=@id`,
       )
       .run(holdingToRow(updated));

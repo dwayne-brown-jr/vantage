@@ -4,6 +4,7 @@ import { fmtPct, fmtSignedUSD, fmtUSD } from "@/lib/format";
 
 /** The four headline KPI cards, shared across tabs. */
 export default function KpiStrip({ a }: { a: PortfolioAnalysis }) {
+  const overCeiling = (a.tsla?.pct ?? 0) > COMFORT_CEILING;
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <Kpi label="Portfolio" value={fmtUSD(a.total)} sub={`${a.byAccount.length} accounts · ${fmtUSD(a.cashTotal)} cash`} />
@@ -14,12 +15,18 @@ export default function KpiStrip({ a }: { a: PortfolioAnalysis }) {
         sub={`ROI ${fmtPct(a.roi)}`}
         tone={a.unrealized >= 0 ? "pos" : "neg"}
       />
+      {/* Only styled as a risk when it actually is one — a red tile on a
+          within-tolerance figure trains the eye to ignore the warning. */}
       <Kpi
         label="Tesla concentration"
         value={a.tsla ? fmtPct(a.tsla.pct) : "0%"}
-        sub={`comfort ~${COMFORT_CEILING}% · ${fmtUSD(a.tsla?.value ?? 0)}`}
-        tone="neg"
-        risk
+        sub={
+          a.tslaUnvested > 0
+            ? `${fmtPct(a.tslaExposurePct)} incl. unvested · comfort ~${COMFORT_CEILING}%`
+            : `comfort ~${COMFORT_CEILING}% · ${fmtUSD(a.tsla?.value ?? 0)}`
+        }
+        tone={overCeiling ? "neg" : undefined}
+        risk={overCeiling}
       />
     </div>
   );

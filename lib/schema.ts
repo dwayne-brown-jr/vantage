@@ -18,6 +18,8 @@ export const holdingInputSchema = z.object({
   price: z.number().finite().nullable().optional(),
   source: z.string().nullable().optional(),
   updatedAt: z.string().nullable().optional(),
+  /** Unvested equity comp — tracked, never counted in portfolio totals. */
+  unvested: z.number().finite().nonnegative().nullable().optional(),
 });
 
 /**

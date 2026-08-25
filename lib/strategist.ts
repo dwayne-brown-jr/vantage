@@ -146,6 +146,11 @@ export function buildStrategistContext(holdings: Holding[]): string {
       pctOfTotal(a.singleTotal, a.total),
     )}). Per-stock: ${a.singles.map((s) => `${s.symbol} ${fmtPct(s.pct)}`).join(", ")}.`,
     `Tesla: TSLA line is ${a.tsla ? `${fmtUSD(a.tsla.value)} = ${fmtPct(a.tsla.pct)}` : "$0"} of the portfolio, BUT the owner also WORKS at Tesla (salary, benefits, and future RSUs are all Tesla), so true Tesla exposure is materially higher. Comfort ceiling for any single stock: ${COMFORT_CEILING}%.`,
+    a.unvestedTotal > 0
+      ? `UNVESTED EQUITY: ${fmtUSD(a.tslaUnvested)} of Tesla RSUs are granted but NOT yet vested. They are deliberately excluded from every figure above — they are not owned yet and are forfeited if the owner leaves. Counting vested plus unvested, Tesla exposure is ${fmtPct(
+          a.tslaExposurePct,
+        )}. Never treat unvested value as sellable or as part of the portfolio total; it can only be planned around as future income, taxed as ordinary income at vest.`
+      : "",
     cashByAccount.length ? `Cash available to deploy without selling: ${fmtUSD(a.cashTotal)} (${cashByAccount.join(", ")}).` : "",
     "",
     "TAX RULE (applies to every suggestion): In the Roth and the 401(k), selling to rebalance is TAX-FREE. In the taxable account, only the GAIN portion of a sale is taxed (~18.8% long-term + any state) — so a low-gain holding is cheap to trim and a high-gain holding is expensive. RSUs are taxed as ordinary income at vest.",

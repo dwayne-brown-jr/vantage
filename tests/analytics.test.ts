@@ -188,3 +188,53 @@ describe("projectRsu()", () => {
     expect(p.points.every((pt) => pt.tslaValue >= 0)).toBe(true);
   });
 });
+
+describe("analyze() — unvested equity compensation", () => {
+  const vested = (unvested: number | null): Holding[] => [
+    { id: "r", account: "Tesla · RSUs", symbol: "TSLA", name: "Tesla RSUs", value: 8_646.5, costBasis: 8_646.5, assetClass: "us_stock", unvested },
+    { id: "s", account: "Schwab", symbol: "SWPPX", name: "S&P 500", value: 6_694.02, costBasis: 4_101.55, assetClass: "us_large" },
+  ];
+
+  it("excludes unvested value from the portfolio total", () => {
+    const withUnvested = analyze(vested(19_557.85));
+    const without = analyze(vested(null));
+    // The total must be identical: unvested is tracked, never counted.
+    expect(withUnvested.total).toBeCloseTo(without.total, 10);
+    expect(withUnvested.total).toBeCloseTo(15_340.52, 2);
+  });
+
+  it("excludes unvested from every allocation percentage", () => {
+    const a = analyze(vested(19_557.85));
+    const sum = a.buckets.reduce((s, b) => s + b.pct, 0);
+    expect(sum).toBeCloseTo(100, 9);
+    expect(a.tsla?.pct).toBeCloseTo((8_646.5 / 15_340.52) * 100, 8);
+  });
+
+  it("reports unvested separately", () => {
+    const a = analyze(vested(19_557.85));
+    expect(a.unvestedTotal).toBeCloseTo(19_557.85, 10);
+    expect(a.tslaUnvested).toBeCloseTo(19_557.85, 10);
+  });
+
+  it("computes exposure including unvested against the enlarged base", () => {
+    const a = analyze(vested(19_557.85));
+    // (8646.50 + 19557.85) / (15340.52 + 19557.85) = 28204.35 / 34898.37
+    expect(a.tslaExposurePct).toBeCloseTo((28_204.35 / 34_898.37) * 100, 8);
+    // Exposure must exceed the held-only percentage.
+    expect(a.tslaExposurePct).toBeGreaterThan(a.tsla!.pct);
+  });
+
+  it("is a no-op when nothing is unvested", () => {
+    const a = analyze(vested(null));
+    expect(a.unvestedTotal).toBe(0);
+    expect(a.tslaUnvested).toBe(0);
+    // With no unvested value, exposure collapses to the held percentage.
+    expect(a.tslaExposurePct).toBeCloseTo(a.tsla!.pct, 10);
+  });
+
+  it("coerces a non-finite unvested value to zero", () => {
+    const a = analyze(vested(Number.NaN as unknown as number));
+    expect(a.unvestedTotal).toBe(0);
+    expect(Number.isFinite(a.tslaExposurePct)).toBe(true);
+  });
+});

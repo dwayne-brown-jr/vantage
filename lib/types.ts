@@ -44,6 +44,18 @@ export interface Holding {
   source?: string | null;
   /** ISO timestamp of the last value update. */
   updatedAt?: string | null;
+
+  /**
+   * Value that is NOT yet owned — unvested equity comp (RSUs that would be
+   * forfeited on leaving, E*Trade's "Potential Benefit Value").
+   *
+   * Deliberately separate from `value` and EXCLUDED from every portfolio
+   * total: it is contingent future compensation, not an asset held today, and
+   * counting it would overstate both net worth and any allocation computed
+   * from it. Analytics surfaces it on its own so the concentration risk it
+   * represents stays visible without polluting the totals.
+   */
+  unvested?: number | null;
 }
 
 /** A holding without server-managed fields — what the UI/import layer submits. */

@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS holdings (
   quantity    REAL,
   price       REAL,
   source      TEXT,
-  updated_at  TEXT
+  updated_at  TEXT,
+  unvested    REAL
 );
 CREATE TABLE IF NOT EXISTS snapshots (
   id          TEXT PRIMARY KEY,
@@ -53,11 +54,25 @@ export function getDb(): Database.Database {
   const db = new Database(DB_PATH);
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA);
+  migrate(db);
 
   seedIfEmpty(db);
 
   globalForDb.__vantageDb = db;
   return db;
+}
+
+/**
+ * Add columns to a database created before they existed. `CREATE TABLE IF NOT
+ * EXISTS` never alters an existing table, so a new field is invisible on any
+ * database that predates it — silently reading as undefined rather than erroring.
+ * Each step is idempotent and checked against the live table.
+ */
+function migrate(db: Database.Database): void {
+  const columns = new Set(
+    (db.prepare("PRAGMA table_info(holdings)").all() as Array<{ name: string }>).map((c) => c.name),
+  );
+  if (!columns.has("unvested")) db.exec("ALTER TABLE holdings ADD COLUMN unvested REAL");
 }
 
 /** On a fresh database, load the real seed holdings so the app is never empty. */

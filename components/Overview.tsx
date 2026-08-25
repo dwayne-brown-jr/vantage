@@ -51,6 +51,14 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
       title: "Tesla concentration stacked on Tesla income",
       desc: `Single-name exposure of ${fmtPct(a.tsla.pct)} sits far above the ~${COMFORT_CEILING}% comfort line, compounded by salary, benefits, and vesting RSUs all riding on one company.`,
     });
+  } else if (a.tslaUnvested > 0 && a.tslaExposurePct > COMFORT_CEILING) {
+    // Held TSLA is within tolerance, but unvested RSUs will vest into more of
+    // it — the risk is ahead, not behind, and is invisible from the held line.
+    items.push({
+      color: "#e89b6c",
+      title: `Tesla is ${fmtPct(a.tsla?.pct ?? 0)} of holdings, but ${fmtPct(a.tslaExposurePct)} of your Tesla-linked wealth`,
+      desc: `${fmtUSD(a.tslaUnvested)} of unvested RSUs will vest into TSLA and push the held share back up unless they are sold as they land. Salary and benefits ride on the same company.`,
+    });
   }
 
   // Any other single name above the comfort ceiling.
@@ -178,9 +186,21 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
                 <span>comfort ~{COMFORT_CEILING}%</span>
               </div>
             </div>
+            {a.tslaUnvested > 0 && (
+              <div className="exposure">
+                <span className="exp-label">Including unvested RSUs</span>
+                <span className="exp-value mono">{fmtPct(a.tslaExposurePct)}</span>
+                <span className="exp-note">
+                  {fmtUSD(a.tslaUnvested)}{" "}
+                  unvested isn&apos;t counted in your portfolio — you don&apos;t own it yet — but it is Tesla exposure,
+                  and it vests into more of it.
+                </span>
+              </div>
+            )}
             <div className="meternote">
-              A third of your portfolio is one stock — <b>and Tesla also signs your paycheck</b>, funds your benefits,
-              and is the source of these RSUs. The Plan tab projects how selling vests brings this down.
+              {a.tsla && a.tsla.pct > COMFORT_CEILING ? "A third of your portfolio is one stock" : "This is your largest single-name position"}{" "}
+              — <b>and Tesla also signs your paycheck</b>, funds your benefits, and is the source of these RSUs. The
+              Plan tab projects how selling vests brings this down.
             </div>
           </div>
         </div>
