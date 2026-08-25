@@ -100,6 +100,87 @@ export function parseYahooHistory(json: unknown): Candle[] {
   return candles;
 }
 
+/* ── dividends (for portfolio yield) ─────────────────────────────────────── */
+export interface DividendRate {
+  symbol: string;
+  /** Sum of dividends per share paid over the trailing 12 months. */
+  trailingPerShare: number;
+  /** How many distributions made up that total — 0 means it pays nothing. */
+  payments: number;
+  /** ISO date of the most recent distribution, if any. */
+  lastPaid: string | null;
+}
+
+/**
+ * Parse dividend events out of a Yahoo chart response into a trailing-12-month
+ * per-share rate.
+ *
+ * Trailing rather than forward: it is what was actually paid, not a projection.
+ * A fund that just cut its distribution will read high for up to a year, which
+ * is the honest failure mode — it overstates nothing that did not happen.
+ *
+ * `asOfSeconds` bounds the window explicitly so the function stays pure and
+ * testable; callers pass the current time.
+ */
+export function parseYahooDividends(json: unknown, symbol: string, asOfSeconds: number): DividendRate {
+  const events = (
+    json as { chart?: { result?: Array<{ events?: { dividends?: Record<string, { amount?: number; date?: number }> } }> } }
+  )?.chart?.result?.[0]?.events?.dividends;
+
+  const empty: DividendRate = { symbol: symbol.toUpperCase(), trailingPerShare: 0, payments: 0, lastPaid: null };
+  if (!events || typeof events !== "object") return empty;
+
+  const cutoff = asOfSeconds - 365 * 86_400;
+  let total = 0;
+  let payments = 0;
+  let last = 0;
+
+  for (const ev of Object.values(events)) {
+    const amount = ev?.amount;
+    const date = ev?.date;
+    if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) continue;
+    if (typeof date !== "number" || !Number.isFinite(date)) continue;
+    if (date < cutoff || date > asOfSeconds) continue;
+    total += amount;
+    payments += 1;
+    if (date > last) last = date;
+  }
+
+  return {
+    symbol: symbol.toUpperCase(),
+    trailingPerShare: total,
+    payments,
+    lastPaid: last > 0 ? new Date(last * 1000).toISOString() : null,
+  };
+}
+
+async function fetchYahooDividend(symbol: string, asOfSeconds: number): Promise<DividendRate | null> {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1y&events=div`;
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0" },
+      signal: AbortSignal.timeout(12_000),
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return parseYahooDividends(await res.json(), symbol, asOfSeconds);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Trailing-12-month dividend rates for the given symbols. A symbol that cannot
+ * be resolved is omitted entirely rather than reported as zero — "we don't
+ * know" and "it pays nothing" are different, and conflating them would
+ * silently understate the portfolio's yield.
+ */
+export async function fetchDividendRates(symbols: string[], asOfSeconds?: number): Promise<DividendRate[]> {
+  const at = asOfSeconds ?? Math.floor(Date.now() / 1000);
+  const results = await Promise.all(symbols.map((s) => fetchYahooDividend(s, at)));
+  return results.filter((d): d is DividendRate => d !== null);
+}
+
 /** Fetch daily candles for a symbol. `range` like "6mo" | "1y" | "2y". */
 export async function fetchHistory(symbol: string, range = "1y"): Promise<Candle[]> {
   try {

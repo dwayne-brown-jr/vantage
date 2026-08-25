@@ -4,6 +4,7 @@ import { TriangleAlert } from "lucide-react";
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import Donut from "@/components/Donut";
+import GrowthIncome from "@/components/GrowthIncome";
 import KpiStrip from "@/components/KpiStrip";
 import type { PortfolioAnalysis } from "@/lib/analytics";
 import { ASSET_CLASSES, COMFORT_CEILING } from "@/lib/constants";
@@ -95,6 +96,11 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
     <>
       <div className="mb-[18px]">
         <KpiStrip a={a} />
+      </div>
+
+      {/* Growth over the snapshot history + trailing dividend income. */}
+      <div className="mb-[18px]">
+        <GrowthIncome />
       </div>
 
       {/* allocation donuts */}
