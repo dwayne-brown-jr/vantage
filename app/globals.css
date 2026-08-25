@@ -1761,6 +1761,25 @@ body {
   color: var(--green);
 }
 
+/* Unvested field on an equity-comp holding card (mobile) */
+.vt .hcard-unvested {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+.vt .hcard-unvested label {
+  display: block;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin-bottom: 4px;
+}
+.vt .hcard-unvested .v-input {
+  width: 100%;
+  text-align: left;
+}
+
 /* Unvested-RSU exposure line under the concentration meter */
 .vt .exposure {
   display: grid;

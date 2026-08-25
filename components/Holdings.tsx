@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Calculator, ChevronRight, FileUp, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import CsvImport from "@/components/CsvImport";
+import { classifyAccount } from "@/lib/accounts";
 import { ASSET_CLASSES, ASSET_CLASS_KEYS } from "@/lib/constants";
 import { fmtUSD } from "@/lib/format";
 import type { AssetClassKey, Holding, HoldingInput } from "@/lib/types";
@@ -119,6 +120,9 @@ export default function Holdings({
       {accounts.map((account) => {
         const rows = holdings.filter((h) => h.account === account);
         const sub = rows.reduce((s, h) => s + (h.value || 0), 0);
+        // Unvested equity comp only exists in a grant account, so the column
+        // appears there rather than sitting empty on every other holding.
+        const isEquityComp = classifyAccount(account).treatment === "rsu";
         // Desktop is always expanded; mobile opens one account at a tap.
         const open = !isMobile || openAccounts.has(account);
         const panelId = `acct-${account.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
@@ -149,7 +153,7 @@ export default function Holdings({
             {isMobile ? (
               <div className="hcards">
                 {rows.map((h) => (
-                  <HoldingCard key={h.id} h={h} onLive={onLive} onCommit={onCommit} onDelete={onDelete} />
+                  <HoldingCard key={h.id} h={h} onLive={onLive} onCommit={onCommit} onDelete={onDelete} showUnvested={isEquityComp} />
                 ))}
               </div>
             ) : (
@@ -163,6 +167,7 @@ export default function Holdings({
                     <th className="r">Shares</th>
                     <th className="r">Value</th>
                     <th className="r">Cost basis</th>
+                    {isEquityComp && <th className="r">Unvested</th>}
                     <th />
                   </tr>
                 </thead>
@@ -230,6 +235,18 @@ export default function Holdings({
                           onCommit={(n) => onCommit(h.id, { costBasis: n })}
                         />
                       </td>
+                      {isEquityComp && (
+                        <td className="r">
+                          <NumberCell
+                            value={h.unvested ?? 0}
+                            ariaLabel="Unvested value"
+                            blankZero
+                            placeholder="—"
+                            onLive={(n) => onLive(h.id, { unvested: n })}
+                            onCommit={(n) => onCommit(h.id, { unvested: n })}
+                          />
+                        </td>
+                      )}
                       <td className="r">
                         <button className="iconbtn" aria-label={`Delete ${h.symbol}`} onClick={() => onDelete(h.id)}>
                           <Trash2 size={15} />
@@ -281,11 +298,14 @@ function HoldingCard({
   onLive,
   onCommit,
   onDelete,
+  showUnvested = false,
 }: {
   h: Holding;
   onLive: HoldingsProps["onLive"];
   onCommit: HoldingsProps["onCommit"];
   onDelete: HoldingsProps["onDelete"];
+  /** Only equity-comp accounts carry unvested value. */
+  showUnvested?: boolean;
 }) {
   return (
     <div className="hcard">
@@ -355,6 +375,19 @@ function HoldingCard({
           />
         </div>
       </div>
+      {showUnvested && (
+        <div className="hcard-unvested">
+          <label>Unvested (not counted in your portfolio)</label>
+          <NumberCell
+            value={h.unvested ?? 0}
+            ariaLabel="Unvested value"
+            blankZero
+            placeholder="—"
+            onLive={(n) => onLive(h.id, { unvested: n })}
+            onCommit={(n) => onCommit(h.id, { unvested: n })}
+          />
+        </div>
+      )}
     </div>
   );
 }
