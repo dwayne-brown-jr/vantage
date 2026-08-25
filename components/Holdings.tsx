@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { Calculator, FileUp, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Calculator, ChevronRight, FileUp, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import CsvImport from "@/components/CsvImport";
 import { ASSET_CLASSES, ASSET_CLASS_KEYS } from "@/lib/constants";
@@ -42,21 +42,38 @@ export default function Holdings({
   const [importing, setImporting] = useState(false);
   const isMobile = useIsMobile();
   const accounts = [...new Set(holdings.map((h) => h.account))];
+  // On a phone the accounts collapse so every account fits on one screen;
+  // opening one is a tap. Desktop keeps every account expanded.
+  const [openAccounts, setOpenAccounts] = useState<Set<string>>(new Set());
+
+  function toggleAccount(account: string) {
+    setOpenAccounts((prev) => {
+      const next = new Set(prev);
+      if (next.has(account)) next.delete(account);
+      else next.add(account);
+      return next;
+    });
+  }
+
+  const allOpen = accounts.length > 0 && accounts.every((acc) => openAccounts.has(acc));
 
   return (
     <div className="card">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="sectit" style={{ margin: 0 }}>
-          Holdings — live prices + manual edits
+          {isMobile ? "Holdings" : "Holdings — live prices + manual edits"}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Labels shorten on a phone so all three actions fit one row, leaving
+            the screen free for the accounts themselves. */}
+        <div className={"flex flex-wrap items-center gap-2" + (isMobile ? " hact" : "")}>
           <button
             className="btn-ghost"
             disabled={refreshing}
             onClick={() => onRefreshPrices(false)}
             title="Fetch latest prices and recompute values from share counts"
           >
-            <RefreshCw size={15} className={refreshing ? "spin" : ""} /> {refreshing ? "Refreshing…" : "Refresh prices"}
+            <RefreshCw size={15} className={refreshing ? "spin" : ""} />{" "}
+            {refreshing ? "Refreshing…" : isMobile ? "Refresh" : "Refresh prices"}
           </button>
           <button
             className="btn-ghost"
@@ -64,11 +81,11 @@ export default function Holdings({
             onClick={() => onRefreshPrices(true)}
             title="Estimate share counts from current values, then price them live"
           >
-            <Calculator size={15} /> Estimate shares
+            <Calculator size={15} /> {isMobile ? "Estimate" : "Estimate shares"}
           </button>
           {!importing && (
             <button className="btn-ghost" onClick={() => setImporting(true)}>
-              <FileUp size={15} /> Import CSV
+              <FileUp size={15} /> {isMobile ? "Import" : "Import CSV"}
             </button>
           )}
         </div>
@@ -85,14 +102,50 @@ export default function Holdings({
 
       {importing && <CsvImport holdings={holdings} onImported={onImported} onClose={() => setImporting(false)} />}
 
+      {isMobile && accounts.length > 1 && (
+        <div className="acctbar">
+          <span>
+            {accounts.length} accounts · <span className="mono">{fmtUSD(holdings.reduce((s, h) => s + (h.value || 0), 0))}</span>
+          </span>
+          <button
+            className="acctall"
+            onClick={() => setOpenAccounts(allOpen ? new Set() : new Set(accounts))}
+          >
+            {allOpen ? "Collapse all" : "Expand all"}
+          </button>
+        </div>
+      )}
+
       {accounts.map((account) => {
         const rows = holdings.filter((h) => h.account === account);
         const sub = rows.reduce((s, h) => s + (h.value || 0), 0);
+        // Desktop is always expanded; mobile opens one account at a tap.
+        const open = !isMobile || openAccounts.has(account);
+        const panelId = `acct-${account.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
         return (
-          <div key={account}>
-            <div className="acctlbl">
-              {account} · <span className="mono" style={{ color: "var(--muted)" }}>{fmtUSD(sub)}</span>
-            </div>
+          <div key={account} className="acctsec">
+            {isMobile ? (
+              <button
+                className={"acctbtn" + (open ? " open" : "")}
+                aria-expanded={open}
+                aria-controls={panelId}
+                onClick={() => toggleAccount(account)}
+              >
+                <ChevronRight size={15} className="acctchev" aria-hidden="true" />
+                <span className="acctname">{account}</span>
+                <span className="acctmeta">
+                  <span className="mono">{fmtUSD(sub)}</span>
+                  <span className="acctcount">
+                    {rows.length} position{rows.length === 1 ? "" : "s"}
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <div className="acctlbl">
+                {account} · <span className="mono" style={{ color: "var(--muted)" }}>{fmtUSD(sub)}</span>
+              </div>
+            )}
+            <div id={panelId} hidden={!open}>
             {isMobile ? (
               <div className="hcards">
                 {rows.map((h) => (
@@ -191,6 +244,7 @@ export default function Holdings({
             <button className="addbtn" onClick={() => onAdd(account)}>
               <Plus size={15} /> Add position
             </button>
+            </div>
           </div>
         );
       })}

@@ -172,6 +172,26 @@ body {
     padding: 9px 11px;
     letter-spacing: 0.2px;
   }
+  /* Reclaim vertical space on a phone: the tagline wraps to two lines and
+     carries no information, and the shell can afford tighter padding. Real
+     browser chrome eats ~100px, so this headroom is what keeps every account
+     above the fold. */
+  .tagline {
+    display: none;
+  }
+  .wrap {
+    padding: 16px 14px 48px;
+  }
+  .topbar {
+    padding-bottom: 12px;
+    margin-bottom: 16px;
+  }
+  .nav {
+    margin-bottom: 16px;
+  }
+  .card {
+    padding: 16px 14px;
+  }
 }
 
 .card {
@@ -1683,6 +1703,110 @@ body {
 /* live-priced marker */
 .vt .live-dot {
   color: var(--green);
+}
+
+/* ──────────────── holdings: per-account accordion (mobile) ──────────────── */
+/* Compact action row so the accounts start near the top of the screen. */
+.vt .hact {
+  gap: 6px;
+  width: 100%;
+}
+.vt .hact .btn-ghost {
+  flex: 1;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+  padding: 8px 6px;
+  white-space: nowrap;
+}
+.vt .acctbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.vt .acctall {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--gold);
+  background: transparent;
+  border: 1px solid var(--gold-dim);
+  border-radius: 8px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.vt .acctsec + .acctsec {
+  margin-top: 8px;
+}
+.vt .acctbtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 13px;
+  margin-top: 8px;
+  cursor: pointer;
+  /* Still a comfortable thumb target (Apple's 44pt minimum). */
+  min-height: 48px;
+}
+.vt .acctbtn.open {
+  border-color: var(--gold-dim);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-bottom: 0;
+}
+.vt .acctchev {
+  color: var(--gold);
+  flex: none;
+  transition: transform 0.18s;
+}
+.vt .acctbtn.open .acctchev {
+  transform: rotate(90deg);
+}
+.vt .acctname {
+  color: var(--txt);
+  font-size: 13.5px;
+  font-weight: 600;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vt .acctmeta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  margin-left: auto;
+  flex: none;
+}
+.vt .acctmeta .mono {
+  color: var(--txt);
+  font-size: 13px;
+}
+.vt .acctcount {
+  color: var(--faint);
+  font-size: 11px;
+  margin-top: 1px;
+}
+/* The open panel reads as one piece with its header. */
+.vt .acctbtn.open + div {
+  border: 1px solid var(--gold-dim);
+  border-top: none;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  padding: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vt .acctchev {
+    transition: none;
+  }
 }
 
 /* ───────────────────────── holdings: mobile cards ───────────────────────── */
