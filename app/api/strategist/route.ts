@@ -15,12 +15,34 @@ const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-fable-5";
 const IS_FABLE = MODEL === "claude-fable-5";
 const FALLBACK_MODEL = "claude-opus-4-8";
 
+// A user turn may carry attachments: screenshots (image blocks) and statements
+// (PDF document blocks) alongside the text. Base64 payloads are large, so these
+// caps are generous but bounded — the client downscales/limits before sending.
+const textBlock = z.object({ type: z.literal("text"), text: z.string().min(1).max(8000) });
+const imageBlock = z.object({
+  type: z.literal("image"),
+  source: z.object({
+    type: z.literal("base64"),
+    media_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
+    data: z.string().min(1).max(7_500_000),
+  }),
+});
+const documentBlock = z.object({
+  type: z.literal("document"),
+  source: z.object({
+    type: z.literal("base64"),
+    media_type: z.literal("application/pdf"),
+    data: z.string().min(1).max(9_000_000),
+  }),
+});
+const contentBlock = z.discriminatedUnion("type", [textBlock, imageBlock, documentBlock]);
+
 const bodySchema = z.object({
   messages: z
     .array(
       z.object({
         role: z.enum(["user", "assistant"]),
-        content: z.string().min(1).max(8000),
+        content: z.union([z.string().min(1).max(8000), z.array(contentBlock).min(1).max(6)]),
       }),
     )
     .min(1)
@@ -56,7 +78,8 @@ export async function POST(req: Request) {
     system,
     // Server-side web search so the strategist can pull current headlines.
     tools: [{ type: "web_search_20260209", name: "web_search" }],
-    messages: parsed.data.messages,
+    // Shapes are zod-validated above to match Anthropic's block schema.
+    messages: parsed.data.messages as Anthropic.Beta.BetaMessageParam[],
     ...(IS_FABLE
       ? { betas: ["server-side-fallback-2026-06-01"], fallbacks: [{ model: FALLBACK_MODEL }] }
       : {}),
@@ -84,8 +107,15 @@ export async function POST(req: Request) {
             ),
           );
         }
-      } catch {
-        controller.enqueue(encoder.encode("\n\n[Something went wrong reaching the model. Please try again.]"));
+      } catch (err) {
+        // Log server-side: the client only ever sees the generic sentence, so
+        // without this an API-shape error (bad attachment block, oversized
+        // request) is invisible when debugging.
+        console.error("[strategist] stream failed:", err);
+        const detail = err instanceof Anthropic.APIError ? ` (${err.status}: ${err.message})` : "";
+        controller.enqueue(
+          encoder.encode(`\n\n[Something went wrong reaching the model. Please try again.${detail}]`),
+        );
       } finally {
         controller.close();
       }
