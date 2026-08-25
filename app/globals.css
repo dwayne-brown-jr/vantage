@@ -493,6 +493,33 @@ body {
 .vt .dlrow .pc {
   font-family: var(--font-mono);
   color: var(--txt);
+  /* Never let the figure be the thing that gets squeezed — the label
+     ellipsises instead. */
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+/*
+ * On a phone the ring and legend side by side leave the legend ~190px, which
+ * is only just enough for "International developed  33.6%" — any narrower
+ * (a longer account label, a zoomed viewport) and the percentage is pushed
+ * off the edge. Stacking hands the legend the card's full width.
+ */
+@media (max-width: 560px) {
+  .vt .donutwrap {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .vt .donut-ring {
+    align-self: center;
+  }
+  .vt .donutleg {
+    width: 100%;
+  }
+  .vt .dlrow {
+    font-size: 12.5px;
+  }
 }
 
 /* concentration meter */
@@ -990,6 +1017,9 @@ body {
 }
 .vt .inbar input {
   flex: 1;
+  /* An <input> carries an intrinsic min-width (~20 characters), so without
+     this it refuses to shrink and pushes the send button off the edge. */
+  min-width: 0;
   background: var(--surface2);
   border: 1px solid var(--line);
   color: var(--txt);
