@@ -58,3 +58,6 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Stress-test transcripts contain real holdings and model responses.
+stress-report*.json
