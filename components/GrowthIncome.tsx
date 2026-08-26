@@ -53,7 +53,7 @@ export default function GrowthIncome() {
   if (error) {
     return (
       <div className="card">
-        <div className="sectit">Growth &amp; income</div>
+        <div className="sectit">How it&rsquo;s doing</div>
         <p className="warn">{error}</p>
       </div>
     );
@@ -62,7 +62,7 @@ export default function GrowthIncome() {
   if (!data) {
     return (
       <div className="card">
-        <div className="sectit">Growth &amp; income</div>
+        <div className="sectit">How it&rsquo;s doing</div>
         <p className="text-sm text-muted">Loading…</p>
       </div>
     );
@@ -72,7 +72,7 @@ export default function GrowthIncome() {
 
   return (
     <div className="card">
-      <div className="sectit">Growth &amp; income</div>
+      <div className="sectit">How it&rsquo;s doing</div>
       <div className="gi-grid">
         <GrowthTile growth={growth} />
         <IncomeTile income={income} />
