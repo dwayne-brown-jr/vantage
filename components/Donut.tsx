@@ -23,9 +23,40 @@ export interface DonutDatum {
   color?: string;
 }
 
-export default function Donut({ title, data }: { title: string; data: DonutDatum[] }) {
+export default function Donut({
+  title,
+  data,
+  showTotal = true,
+  groupBelowPct = 0,
+}: {
+  title: string;
+  data: DonutDatum[];
+  /** Print the total in the ring. Off for repeats — the same figure shown
+   *  three times across a row reads as three different numbers. */
+  showTotal?: boolean;
+  /** Fold slices under this percentage into a single "Other". A client cannot
+   *  act on a 0.1% sliver, and six of them bury the four that matter. */
+  groupBelowPct?: number;
+}) {
   const total = data.reduce((s, d) => s + (d.value || 0), 0) || 1;
-  const ds = data.map((d, i) => ({ ...d, color: d.color ?? PALETTE[i % PALETTE.length] ?? "#5c6472" }));
+  const coloured = data.map((d, i) => ({ ...d, color: d.color ?? PALETTE[i % PALETTE.length] ?? "#5c6472" }));
+
+  let ds = coloured;
+  if (groupBelowPct > 0) {
+    const keep = coloured.filter((d) => (d.value / total) * 100 >= groupBelowPct);
+    const small = coloured.filter((d) => (d.value / total) * 100 < groupBelowPct);
+    // Only worth folding when it actually removes clutter.
+    if (small.length > 1) {
+      ds = [
+        ...keep,
+        {
+          label: `Other (${small.length} smaller holdings)`,
+          value: small.reduce((s, d) => s + d.value, 0),
+          color: "#5c6472",
+        },
+      ];
+    }
+  }
 
   return (
     <div className="card">
@@ -49,9 +80,11 @@ export default function Donut({ title, data }: { title: string; data: DonutDatum
               </Pie>
             </PieChart>
           </ResponsiveContainer>
-          <div className="center">
-            <div className="ct">{fmtUSD(total)}</div>
-          </div>
+          {showTotal && (
+            <div className="center">
+              <div className="ct">{fmtUSD(total)}</div>
+            </div>
+          )}
         </div>
         <div className="donutleg">
           {ds.map((s, i) => (

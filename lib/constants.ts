@@ -7,21 +7,25 @@ export interface AssetClassMeta {
 }
 
 /**
- * The asset-class taxonomy, ported verbatim from the prototype. `bucket` maps
+ * The asset-class taxonomy. Labels are CLIENT-FACING copy — plain English a
+ * non-specialist would use out loud; every calculation keys off the
+ * AssetClassKey code, never the label, so these are safe to reword.
+ *
+ * Ported from the prototype. `bucket` maps
  * each display class into the high-level US / International / Blend / Cash view.
  * `tdf` is special-cased in analytics: it is decomposed via TDF_SPLIT rather
  * than dropped whole into its bucket.
  */
 export const ASSET_CLASSES: Record<AssetClassKey, AssetClassMeta> = {
-  us_large: { label: "US large-cap index", color: "#e0b544", bucket: "US equity" },
-  us_total: { label: "US total market", color: "#c9a04d", bucket: "US equity" },
-  us_stock: { label: "US single stocks", color: "#d96b6b", bucket: "US equity" },
-  intl_dev: { label: "International developed", color: "#7fa0c8", bucket: "International" },
+  us_large: { label: "US large companies", color: "#e0b544", bucket: "US equity" },
+  us_total: { label: "US whole market", color: "#c9a04d", bucket: "US equity" },
+  us_stock: { label: "Individual stocks", color: "#d96b6b", bucket: "US equity" },
+  intl_dev: { label: "International", color: "#7fa0c8", bucket: "International" },
   intl_em: { label: "Emerging markets", color: "#9dbadd", bucket: "International" },
-  div_value: { label: "Dividend / value", color: "#6fb891", bucket: "US equity" },
-  sector: { label: "Sector bets", color: "#ad8cc2", bucket: "US equity" },
-  spec: { label: "Speculative", color: "#e89b6c", bucket: "US equity" },
-  tdf: { label: "Target-date blend", color: "#8b9fb6", bucket: "Blend" },
+  div_value: { label: "Dividend payers", color: "#6fb891", bucket: "US equity" },
+  sector: { label: "Industry funds", color: "#ad8cc2", bucket: "US equity" },
+  spec: { label: "High-risk holdings", color: "#e89b6c", bucket: "US equity" },
+  tdf: { label: "Target-date fund", color: "#8b9fb6", bucket: "Blend" },
   cash: { label: "Cash", color: "#5c6472", bucket: "Cash" },
 };
 

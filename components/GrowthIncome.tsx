@@ -13,9 +13,24 @@ interface Payload {
   growth: GrowthResult;
 }
 
-/** "$1,234.56" — income is small enough that cents matter. */
-const fmtCents = (n: number): string =>
-  "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** "Aug 25, 2026" — a date a client reads, not an ISO string. */
+function friendlyDate(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  if (!y || !m || !d) return day;
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+/** "Two holdings" rather than a list of tickers a client won't recognise. */
+function describeUncovered(n: number): string {
+  if (n <= 0) return "Some holdings are";
+  if (n === 1) return "One holding is";
+  return `${n} holdings are`;
+}
 
 export default function GrowthIncome() {
   const [data, setData] = useState<Payload | null>(null);
@@ -76,13 +91,16 @@ function GrowthTile({ growth }: { growth: GrowthResult }) {
     return (
       <div className="gi-tile">
         <div className="gi-label">
-          <CalendarClock size={13} /> Growth rate
+          <CalendarClock size={13} /> Annual growth
         </div>
-        <div className="gi-value muted">—</div>
+        {/* An em dash as the value reads as broken software; say when it arrives. */}
+        <div className="gi-value muted text-phrase">
+          {growth.startDay ? `Starts in ${growth.daysUntilNext} day${growth.daysUntilNext === 1 ? "" : "s"}` : "Not yet"}
+        </div>
         <div className="gi-sub">
           {growth.startDay
-            ? `Tracking since ${growth.startDay} · needs ${growth.daysUntilNext} more day${growth.daysUntilNext === 1 ? "" : "s"} of history`
-            : "No history yet — snapshots record on each price refresh, and once a day on the server."}
+            ? `We began tracking your balance on ${friendlyDate(growth.startDay)}. Measuring growth needs at least a week.`
+            : "Your balance is recorded each time prices refresh, and once a day automatically."}
         </div>
       </div>
     );
@@ -93,12 +111,12 @@ function GrowthTile({ growth }: { growth: GrowthResult }) {
     return (
       <div className="gi-tile">
         <div className="gi-label">
-          <TrendingUp size={13} /> Value change
+          <TrendingUp size={13} /> Change so far
         </div>
         <div className={"gi-value " + (pct >= 0 ? "pos" : "neg")}>{fmtSignedPct(pct)}</div>
         <div className="gi-sub">
-          Over {growth.days} days, {growth.startDay} → {growth.endDay}. Not annualized — {growth.daysUntilNext} more
-          days to a meaningful CAGR.
+          Since {friendlyDate(growth.startDay ?? "")}, about {Math.round(growth.days / 7)} weeks. Too early to state a
+          yearly rate — that needs a full year.
         </div>
       </div>
     );
@@ -109,12 +127,12 @@ function GrowthTile({ growth }: { growth: GrowthResult }) {
   return (
     <div className="gi-tile">
       <div className="gi-label">
-        <TrendingUp size={13} /> CAGR
+        <TrendingUp size={13} /> Annual growth
       </div>
       <div className={"gi-value " + (cagrPct >= 0 ? "pos" : "neg")}>{fmtSignedPct(cagrPct)}</div>
       <div className="gi-sub">
-        Compound annual growth over {years.toFixed(1)} years ({fmtUSD(growth.startValue ?? 0)} →{" "}
-        {fmtUSD(growth.endValue ?? 0)}). Value change {fmtSignedPct(growth.totalReturnPct ?? 0)} in total.
+        Average per year over {years.toFixed(1)} years — {fmtUSD(growth.startValue ?? 0)} grew to{" "}
+        {fmtUSD(growth.endValue ?? 0)}, {fmtSignedPct(growth.totalReturnPct ?? 0)} in total.
       </div>
     </div>
   );
@@ -126,29 +144,29 @@ function IncomeTile({ income }: { income: IncomeSummary }) {
   return (
     <div className="gi-tile">
       <div className="gi-label">
-        <Coins size={13} /> Dividend yield
+        <Coins size={13} /> Dividend income
       </div>
+      {/* Dollars, not a yield: nobody thinks "0.3%", they think "$20 a month". */}
       <div className={"gi-value " + (hasAny ? "" : "muted")}>
-        {hasAny && income.yieldPct != null ? fmtPct(income.yieldPct) : "—"}
+        {hasAny ? `${fmtUSD(income.annualIncome)}/yr` : "—"}
       </div>
       <div className="gi-sub">
         {hasAny ? (
           <>
-            {fmtCents(income.annualIncome)}/yr · {fmtCents(income.monthlyIncome)}/mo, trailing 12 months.
+            About {fmtUSD(income.monthlyIncome)} a month, based on the last 12 months of payouts
+            {income.yieldPct != null ? ` (${fmtPct(income.yieldPct)} of your total)` : ""}.
             {!income.complete && (
               <>
                 {" "}
                 <span className="gi-warn">
-                  Covers {fmtPct(income.coveragePct)} of the portfolio — a floor, not the full figure.{" "}
-                  {income.uncoveredSymbols.slice(0, 4).join(", ")}
-                  {income.uncoveredSymbols.length > 4 ? `, +${income.uncoveredSymbols.length - 4} more` : ""} need
-                  share counts.
+                  {describeUncovered(income.uncoveredSymbols.length)} not included, so your real income is a little
+                  higher.
                 </span>
               </>
             )}
           </>
         ) : (
-          "No position has both a share count and a dividend rate yet — run “Estimate shares” on the Holdings tab."
+          "We don’t have share counts yet — use “Estimate shares” on the Holdings tab and this will fill in."
         )}
       </div>
     </div>

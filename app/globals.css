@@ -1850,6 +1850,13 @@ body {
 .vt .gi-value.muted {
   color: var(--faint);
 }
+/* A waiting message occupies the figure slot; a sentence at numeral size
+   shouts louder than the number it stands in for. */
+.vt .gi-value.text-phrase {
+  font-family: var(--font-sans);
+  font-size: 19px;
+  line-height: 1.25;
+}
 .vt .gi-sub {
   font-size: 12px;
   line-height: 1.5;

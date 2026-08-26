@@ -1,7 +1,7 @@
 "use client";
 
 import { TriangleAlert } from "lucide-react";
-import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import Donut from "@/components/Donut";
 import GrowthIncome from "@/components/GrowthIncome";
@@ -48,8 +48,8 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
   if (a.tsla && a.tsla.pct > COMFORT_CEILING) {
     items.push({
       color: "#d96b6b",
-      title: "Tesla concentration stacked on Tesla income",
-      desc: `Single-name exposure of ${fmtPct(a.tsla.pct)} sits far above the ~${COMFORT_CEILING}% comfort line, compounded by salary, benefits, and vesting RSUs all riding on one company.`,
+      title: "Too much riding on Tesla",
+      desc: `${fmtPct(a.tsla.pct)} of your money is in one stock, against a target of about ${COMFORT_CEILING}% — and your salary, benefits, and future RSUs all come from the same company.`,
     });
   } else if (a.tslaUnvested > 0 && a.tslaExposurePct > COMFORT_CEILING) {
     // Held TSLA is within tolerance, but unvested RSUs will vest into more of
@@ -66,8 +66,8 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
     if (s.symbol !== "TSLA" && s.pct > COMFORT_CEILING) {
       items.push({
         color: "#e89b6c",
-        title: `${s.symbol} is also above the comfort line at ${fmtPct(s.pct)}`,
-        desc: `A second concentrated single-name position worth ${fmtUSD(s.value)}.`,
+        title: `${s.symbol} is also a large single holding at ${fmtPct(s.pct)}`,
+        desc: `A second position worth ${fmtUSD(s.value)} that is larger than the ${COMFORT_CEILING}% you are aiming for.`,
       });
     }
   }
@@ -75,16 +75,16 @@ function watchItems(a: PortfolioAnalysis): WatchItem[] {
   if (a.intlPct < 15) {
     items.push({
       color: "#e89b6c",
-      title: `International is thin at ${fmtPct(a.intlPct)}`,
-      desc: "Most of your international comes from the 2060 target-date fund. Growing it — best in the tax-free Roth — is the cleanest fix.",
+      title: `Only ${fmtPct(a.intlPct)} is invested outside the US`,
+      desc: "Nearly all of that comes from your target-date fund. Adding more international — ideally inside the Roth, where it costs nothing to rebalance — is the simplest fix.",
     });
   }
 
   if (a.specTotal > 0) {
     items.push({
       color: "#8b9fb6",
-      title: `${fmtUSD(a.specTotal)} in speculative satellites`,
-      desc: "Holdings tagged speculative add cost and volatility without diversifying — candidates to clear.",
+      title: `${fmtUSD(a.specTotal)} in high-risk holdings`,
+      desc: "These add fees and swing harder than the market without spreading your risk any wider. Worth considering clearing out.",
     });
   }
 
@@ -113,22 +113,26 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
 
       {/* allocation donuts */}
       <div className="grid3">
-        <Donut title="By asset class" data={a.byClass} />
-        <Donut title="US · Intl · Bonds · Cash" data={a.buckets} />
-        <Donut title="By account" data={acctData} />
+        {/* Only the first ring carries the total; repeating it three times
+            across one row invites reading them as different figures. */}
+        <Donut title="What you own" data={a.byClass} groupBelowPct={2} />
+        <Donut title="Where your money is invested" data={a.buckets} showTotal={false} />
+        <Donut title="Which accounts hold it" data={acctData} showTotal={false} />
       </div>
 
-      {/* per-holding bar charts */}
-      <div className="grid3">
+      {/* One chart, not three: "unrealized by holding" and "ROI by holding"
+          restated this same data, and both already exist as columns in the
+          Positions table below. */}
+      <div className="mb-[18px]">
         <div className="card">
-          <div className="sectit">Invested vs. value</div>
-          <ResponsiveContainer width="100%" height={210}>
+          <div className="sectit">What you paid vs. what it&rsquo;s worth</div>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={top} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
               <XAxis dataKey="symbol" {...xAxisProps} interval={0} angle={-35} textAnchor="end" height={46} />
               <YAxis {...yAxisProps} tickFormatter={(v) => "$" + Math.round(Number(v) / 1000) + "k"} />
               <Tooltip
                 {...tooltipProps}
-                formatter={(v, n) => [fmtUSD(Number(v)), n === "costBasis" ? "Invested" : "Value"]}
+                formatter={(v, n) => [fmtUSD(Number(v)), n === "costBasis" ? "You paid" : "Worth now"]}
               />
               <Bar dataKey="costBasis" name="costBasis" fill="#8b9fb6" radius={[3, 3, 0, 0]} isAnimationActive={false} />
               <Bar dataKey="value" name="value" fill="#e0b544" radius={[3, 3, 0, 0]} isAnimationActive={false} />
@@ -136,43 +140,12 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="card">
-          <div className="sectit">Unrealized profit by holding</div>
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart data={top} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
-              <XAxis dataKey="symbol" {...xAxisProps} interval={0} angle={-35} textAnchor="end" height={46} />
-              <YAxis {...yAxisProps} tickFormatter={(v) => "$" + Math.round(Number(v) / 1000) + "k"} />
-              <Tooltip {...tooltipProps} formatter={(v) => [fmtUSD(Number(v)), "Unrealized"]} />
-              <Bar dataKey="unrealized" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                {top.map((s, i) => (
-                  <Cell key={i} fill={s.unrealized >= 0 ? "#6fb891" : "#d96b6b"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="card">
-          <div className="sectit">ROI % by holding</div>
-          <ResponsiveContainer width="100%" height={210}>
-            <BarChart data={top} margin={{ top: 6, right: 6, left: 0, bottom: 0 }}>
-              <XAxis dataKey="symbol" {...xAxisProps} interval={0} angle={-35} textAnchor="end" height={46} />
-              <YAxis {...yAxisProps} tickFormatter={(v) => Number(v).toFixed(0) + "%"} />
-              <Tooltip {...tooltipProps} formatter={(v) => [fmtPct(Number(v)), "ROI"]} />
-              <Bar dataKey="roi" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                {top.map((s, i) => (
-                  <Cell key={i} fill={s.roi >= 0 ? "#e0b544" : "#d96b6b"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
       </div>
 
       {/* concentration hero + watch items */}
       <div className="cols">
         <div className="card">
-          <div className="sectit">Single-name concentration</div>
+          <div className="sectit">How much is in one stock</div>
           <div className="meter" style={{ marginTop: 0 }}>
             <div className="meterhead">
               <span className="big">{a.tsla ? fmtPct(a.tsla.pct) : "0%"}</span>
@@ -183,12 +156,12 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
             <div className="track">
               <div className="fill" style={{ width: fillPct + "%" }} />
               <div className="thresh" style={{ left: COMFORT_CEILING + "%" }}>
-                <span>comfort ~{COMFORT_CEILING}%</span>
+                <span>target ~{COMFORT_CEILING}%</span>
               </div>
             </div>
             {a.tslaUnvested > 0 && (
               <div className="exposure">
-                <span className="exp-label">Including unvested RSUs</span>
+                <span className="exp-label">Counting RSUs you haven&rsquo;t received yet</span>
                 <span className="exp-value mono">{fmtPct(a.tslaExposurePct)}</span>
                 <span className="exp-note">
                   {fmtUSD(a.tslaUnvested)}{" "}
@@ -206,9 +179,9 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
         </div>
 
         <div className="card flags">
-          <div className="sectit">Watch items</div>
+          <div className="sectit">Things to keep an eye on</div>
           {watch.length === 0 ? (
-            <p className="text-sm text-muted">Nothing flagged — allocation looks balanced.</p>
+            <p className="text-sm text-muted">Nothing to flag — your mix looks balanced.</p>
           ) : (
             watch.map((w, i) => (
               <div className="flag" key={i}>
@@ -225,18 +198,18 @@ export default function Overview({ a }: { a: PortfolioAnalysis }) {
 
       {/* positions */}
       <div className="card" style={{ marginTop: 18 }}>
-        <div className="sectit">Positions</div>
+        <div className="sectit">Everything you hold</div>
         <div className="overflow-x-auto">
           <table className="v-table postable">
             <thead>
               <tr>
-                <th>Ticker</th>
+                <th>Symbol</th>
                 <th>Name</th>
-                <th>Class</th>
-                <th className="r">Invested</th>
-                <th className="r">Value</th>
-                <th className="r">Unrealized</th>
-                <th className="r">ROI</th>
+                <th>Type</th>
+                <th className="r">You paid</th>
+                <th className="r">Worth now</th>
+                <th className="r">Gain / loss</th>
+                <th className="r">Gain %</th>
               </tr>
             </thead>
             <tbody>
