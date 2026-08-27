@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { ClipboardList, FileText, Paperclip, RefreshCw, ScanLine, Send, Sparkles, X } from "lucide-react";
+import { ClipboardList, FileText, Paperclip, RefreshCw, ScanLine, Send, Sheet, Sparkles, X } from "lucide-react";
 
 import ReconcileCards from "@/components/ReconcileCards";
 import type { PortfolioAnalysis } from "@/lib/analytics";
@@ -10,12 +10,14 @@ import { reconcileAttachments } from "@/lib/api";
 import type { Plan } from "@/lib/plan";
 import type { Reconciliation, ReconcileProposal } from "@/lib/reconcile";
 import {
+  attachmentBlock,
   attachmentDataUrl,
   fileToAttachment,
   formatBytes,
   MAX_ATTACHMENTS,
   MAX_TOTAL_BYTES,
   type Attachment,
+  type AttachmentBlock,
 } from "@/lib/attachments";
 import { fmtPct, fmtUSD } from "@/lib/format";
 import Markdown from "@/components/Markdown";
@@ -28,15 +30,12 @@ interface ChatMessage {
   plan?: Plan;
   /** When present, this assistant turn renders as ledger-correction cards. */
   reconciliation?: Reconciliation;
-  /** Screenshots / PDFs the owner attached to this (user) turn. */
+  /** Screenshots / PDFs / CSV exports the owner attached to this (user) turn. */
   attachments?: Attachment[];
 }
 
 /** Anthropic content-block shapes sent to /api/strategist. */
-type ReqBlock =
-  | { type: "text"; text: string }
-  | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
-  | { type: "document"; source: { type: "base64"; media_type: string; data: string } };
+type ReqBlock = { type: "text"; text: string } | AttachmentBlock;
 type ReqContent = string | ReqBlock[];
 interface ReqMessage {
   role: "user" | "assistant";
@@ -59,16 +58,8 @@ function buildContent(text: string, attachments: Attachment[]): ReqContent {
   if (attachments.length === 0) return text;
   const blocks: ReqBlock[] = [];
   // Documents and images go before the text block, per Anthropic guidance.
-  for (const a of attachments) {
-    if (a.kind === "pdf") {
-      blocks.push({ type: "document", source: { type: "base64", media_type: a.mediaType, data: a.data } });
-    }
-  }
-  for (const a of attachments) {
-    if (a.kind === "image") {
-      blocks.push({ type: "image", source: { type: "base64", media_type: a.mediaType, data: a.data } });
-    }
-  }
+  for (const a of attachments) if (a.kind !== "image") blocks.push(attachmentBlock(a));
+  for (const a of attachments) if (a.kind === "image") blocks.push(attachmentBlock(a));
   blocks.push({ type: "text", text: text.trim() || DEFAULT_ATTACH_PROMPT });
   return blocks;
 }
@@ -110,7 +101,7 @@ function AttachmentRow({ attachments }: { attachments: Attachment[] }) {
           </a>
         ) : (
           <a className="att-doc" key={i} href={attachmentDataUrl(a)} target="_blank" rel="noreferrer" title={a.name}>
-            <FileText size={14} />
+            {a.kind === "text" ? <Sheet size={14} /> : <FileText size={14} />}
             <span className="att-name">{a.name}</span>
           </a>
         ),
@@ -129,7 +120,7 @@ export default function Strategist({
 }) {
   const greeting = `I've got your full picture — ${fmtUSD(a.total)} across ${a.byAccount.length} accounts, with Tesla at ${
     a.tsla ? fmtPct(a.tsla.pct) : "0%"
-  }. Ask me anything: where new money should go, what's overlapping, your riskiest holdings, or what's moving your positions today. You can also attach a screenshot or statement for me to read.`;
+  }. Ask me anything: where new money should go, what's overlapping, your riskiest holdings, or what's moving your positions today. You can also attach a screenshot, a CSV export, or a statement for me to read.`;
 
   const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", text: greeting }]);
   const [input, setInput] = useState("");
@@ -263,12 +254,7 @@ export default function Strategist({
     setMessages((m) => [...m, { role: "user", text: "Check this against my ledger." }]);
 
     try {
-      const blocks = atts.map((att) =>
-        att.kind === "pdf"
-          ? { type: "document", source: { type: "base64", media_type: att.mediaType, data: att.data } }
-          : { type: "image", source: { type: "base64", media_type: att.mediaType, data: att.data } },
-      );
-      const reconciliation = await reconcileAttachments(blocks);
+      const reconciliation = await reconcileAttachments(atts.map(attachmentBlock));
       setMessages((m) => [...m, { role: "assistant", text: "", reconciliation }]);
     } catch (e) {
       setMessages((m) => [
@@ -415,6 +401,8 @@ export default function Strategist({
               {att.kind === "image" ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={attachmentDataUrl(att)} alt={att.name} />
+              ) : att.kind === "text" ? (
+                <Sheet size={15} />
               ) : (
                 <FileText size={15} />
               )}
@@ -436,7 +424,10 @@ export default function Strategist({
         <input
           ref={fileRef}
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+          /* Extensions matter as much as MIME types here: mobile pickers grey
+             out files whose extension isn't listed, and iOS reports no MIME
+             type at all for a CSV shared out of Files. */
+          accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain,.pdf,application/pdf,.png,.jpg,.jpeg,.webp,.gif,image/png,image/jpeg,image/webp,image/gif"
           multiple
           hidden
           onChange={(e) => {
@@ -450,14 +441,14 @@ export default function Strategist({
           className="attachbtn"
           onClick={() => fileRef.current?.click()}
           disabled={busy || pending.length >= MAX_ATTACHMENTS}
-          aria-label="Attach a screenshot or PDF"
-          title="Attach a screenshot or PDF"
+          aria-label="Attach a screenshot, CSV, or PDF"
+          title="Attach a screenshot, CSV, or PDF"
         >
           <Paperclip size={17} />
         </button>
         <input
           value={input}
-          placeholder="Ask your strategist…  (attach or paste a screenshot)"
+          placeholder="Ask your strategist…  (attach a CSV, screenshot, or PDF)"
           aria-label="Ask your strategist"
           onChange={(e) => setInput(e.target.value)}
           onPaste={onPaste}

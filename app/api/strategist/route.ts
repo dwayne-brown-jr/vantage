@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
+import { contentBlock } from "@/lib/blocks";
 import { listHoldings } from "@/lib/repository";
 import { STRATEGIST_SYSTEM, buildStrategistContext } from "@/lib/strategist";
 
@@ -15,28 +16,9 @@ const MODEL = process.env.VANTAGE_STRATEGIST_MODEL ?? "claude-fable-5";
 const IS_FABLE = MODEL === "claude-fable-5";
 const FALLBACK_MODEL = "claude-opus-4-8";
 
-// A user turn may carry attachments: screenshots (image blocks) and statements
-// (PDF document blocks) alongside the text. Base64 payloads are large, so these
-// caps are generous but bounded — the client downscales/limits before sending.
-const textBlock = z.object({ type: z.literal("text"), text: z.string().min(1).max(8000) });
-const imageBlock = z.object({
-  type: z.literal("image"),
-  source: z.object({
-    type: z.literal("base64"),
-    media_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
-    data: z.string().min(1).max(7_500_000),
-  }),
-});
-const documentBlock = z.object({
-  type: z.literal("document"),
-  source: z.object({
-    type: z.literal("base64"),
-    media_type: z.literal("application/pdf"),
-    data: z.string().min(1).max(9_000_000),
-  }),
-});
-const contentBlock = z.discriminatedUnion("type", [textBlock, imageBlock, documentBlock]);
-
+// A user turn may carry attachments: screenshots (image blocks), statements
+// (PDF document blocks), and CSV exports (text document blocks) alongside the
+// text. The block schemas live in lib/blocks.ts, shared with the reconciler.
 const bodySchema = z.object({
   messages: z
     .array(

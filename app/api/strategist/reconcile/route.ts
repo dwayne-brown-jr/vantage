@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 
+import { attachmentBlockSchema } from "@/lib/blocks";
 import { RECONCILE_OUTPUT_SCHEMA, enrichReconciliation, type ReconcileInput } from "@/lib/reconcile";
 import { listHoldings } from "@/lib/repository";
 import { buildStrategistContext } from "@/lib/strategist";
@@ -20,7 +21,7 @@ const FALLBACK_MODEL = "claude-opus-4-8";
  * every comparison against the ledger happens in lib/reconcile.ts.
  */
 const RECONCILE_SYSTEM = [
-  "You are reading an attached brokerage screenshot or account statement and reporting what it says, so the owner's ledger can be corrected.",
+  "You are reading an attached brokerage screenshot, CSV export, or account statement and reporting what it says, so the owner's ledger can be corrected.",
   "",
   "RULES:",
   "• Report ONLY figures you can actually see in the attachment. Never infer, extrapolate, or carry a number over from the ledger.",
@@ -28,31 +29,14 @@ const RECONCILE_SYSTEM = [
   "• Quote what you read verbatim in `observed` (e.g. \"Cash & Cash Investments $10,701.20\"). This is the audit trail.",
   "• Use the ledger's own account label in `account` whenever the attachment clearly refers to that account.",
   "• Only include a position when the attachment's figure DIFFERS from the ledger, or when the position is missing from the ledger entirely.",
-  "• Set `confidence` honestly: 'high' only when the number is crisply legible; 'low' when the image is blurry, cropped, or ambiguous.",
-  "• If the attachment is partial — a summary page, a cropped screenshot, one tab of several — add an entry to `needStatement` naming the account and what a full statement would show. Prefer asking over guessing.",
+  "• Set `confidence` honestly: 'high' only when the number is crisply legible — or, in a CSV, unambiguously columned; 'low' when the image is blurry, cropped, or the column's meaning is a guess.",
+  "• If the attachment is partial — a summary page, a cropped screenshot, one account's export of several — add an entry to `needStatement` naming the account and what a full statement would show. Prefer asking over guessing.",
   "• If nothing differs, return empty arrays. An empty result is a correct and useful answer.",
   "• Never invent a position that is not visible in the attachment.",
 ].join("\n");
 
-const imageBlock = z.object({
-  type: z.literal("image"),
-  source: z.object({
-    type: z.literal("base64"),
-    media_type: z.enum(["image/png", "image/jpeg", "image/gif", "image/webp"]),
-    data: z.string().min(1).max(7_500_000),
-  }),
-});
-const documentBlock = z.object({
-  type: z.literal("document"),
-  source: z.object({
-    type: z.literal("base64"),
-    media_type: z.literal("application/pdf"),
-    data: z.string().min(1).max(9_000_000),
-  }),
-});
-
 const bodySchema = z.object({
-  attachments: z.array(z.discriminatedUnion("type", [imageBlock, documentBlock])).min(1).max(6),
+  attachments: z.array(attachmentBlockSchema).min(1).max(6),
   /** Optional steer, e.g. "this is only the Roth". */
   instruction: z.string().max(1000).optional(),
 });
@@ -129,7 +113,7 @@ async function reconcile(
     return { error: "The model declined to read this attachment." };
   }
   if (message.stop_reason === "max_tokens") {
-    return { error: "That document was too long to read in one pass. Try a single account's statement." };
+    return { error: "That document was too long to read in one pass. Try a single account's statement or export." };
   }
 
   const text = message.content
@@ -158,7 +142,7 @@ export async function POST(req: Request) {
 
   const json = await req.json().catch(() => null);
   const parsed = bodySchema.safeParse(json);
-  if (!parsed.success) return jsonError("Attach a screenshot or PDF to reconcile.", 400);
+  if (!parsed.success) return jsonError("Attach a screenshot, CSV, or PDF to reconcile.", 400);
 
   // Same streaming shape as the plan route: whitespace heartbeats keep the
   // connection alive past serverless sync limits while the model reads.

@@ -1101,7 +1101,8 @@ body {
   padding: 6px 8px 6px 6px;
   max-width: 240px;
 }
-.vt .att.pdf {
+.vt .att.pdf,
+.vt .att.text {
   color: var(--muted);
   padding-left: 10px;
 }
